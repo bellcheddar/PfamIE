@@ -1,0 +1,11 @@
+# PfamIE Data Forge (Phase 0) dependencies
+# Python 3.12 (numba/umap-learn and coremltools are not yet reliable on 3.14)
+torch
+transformers
+tokenizers
+coremltools
+umap-learn
+scikit-learn
+numpy
+requests
+tqdm
