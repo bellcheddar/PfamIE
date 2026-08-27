@@ -112,7 +112,7 @@ public struct GrammarianView: View {
         }
     }
 
-    /// "SH3 comes before SH2 in 92% of the proteins carrying both."
+    /// "SH3_1, always N-terminal" or "PH, N-terminal in 76%".
     private func orderRow(family: Family, partner: Partner) -> some View {
         HStack(spacing: 10) {
             FamilyChip(family: partner.family,
@@ -121,26 +121,40 @@ public struct GrammarianView: View {
             VStack(alignment: .trailing, spacing: 2) {
                 Text("\(partner.edge.proteinCount.formatted(.number.notation(.compactName))) proteins")
                     .font(.caption).monospacedDigit()
-                if let fraction = partner.edge.fractionBefore {
-                    let dominant = fraction >= 0.5
-                    let percent = (dominant ? fraction : 1 - fraction)
-                        .formatted(.percent.precision(.fractionLength(0)))
-                    Text(dominant
-                         ? "\(partner.family.displayName) first, \(percent)"
-                         : "\(family.displayName) first, \(percent)")
-                        .font(.caption2)
-                        .foregroundStyle(theme.inkSecondary)
-                } else {
-                    // Below ten shared proteins an ordering claim is noise, so
-                    // the store returns nil and nothing is said.
-                    Text("too few to call an order")
-                        .font(.caption2).foregroundStyle(theme.inkSecondary.opacity(0.7))
-                }
+                Text(orderingText(partner))
+                    .font(.caption2)
+                    .foregroundStyle(orderingColour(partner))
             }
         }
         .padding(.horizontal, 12).padding(.vertical, 8)
         .background(theme.bgRaised, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(theme.hairline))
+    }
+
+    private func orderingText(_ partner: Partner) -> String {
+        let name = partner.family.displayName
+        switch partner.edge.ordering {
+        case .alwaysBefore:
+            return "\(name) always N-terminal"
+        case .alwaysAfter:
+            return "\(name) always C-terminal"
+        case .mostlyBefore(let fraction):
+            return "\(name) N-terminal in \(fraction.formatted(.percent.precision(.fractionLength(0))))"
+        case .mostlyAfter(let fraction):
+            return "\(name) C-terminal in \(fraction.formatted(.percent.precision(.fractionLength(0))))"
+        case .tooFewToSay:
+            // Below ten shared proteins an ordering claim is noise.
+            return "too few to call an order"
+        }
+    }
+
+    /// The pairs that vary are the interesting ones, so they are the ones
+    /// picked out rather than the invariant majority.
+    private func orderingColour(_ partner: Partner) -> Color {
+        switch partner.edge.ordering {
+        case .mostlyBefore, .mostlyAfter: return theme.accentFlare
+        default: return theme.inkSecondary
+        }
     }
 
     private func architectureSection(_ family: Family) -> some View {

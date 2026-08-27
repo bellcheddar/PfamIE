@@ -67,6 +67,10 @@ public final class Router {
             oraclePrefill = sequence
             selectedTab = .oracle
         }
+        if let accession = defaults.string(forKey: "PfamIEFamily"), !accession.isEmpty {
+            grammarianArchitecture = [PfamID(accession.uppercased())]
+            selectedTab = .grammarian
+        }
         if let query = defaults.string(forKey: "PfamIEQuery"), !query.isEmpty {
             fieldGuideQuery = query
             selectedTab = .fieldGuide

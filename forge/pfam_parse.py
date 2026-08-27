@@ -22,13 +22,23 @@ SEQ_NAME_RE = re.compile(r"^(?P<name>\S+?)/(?P<start>\d+)-(?P<end>\d+)$")
 # insert columns in some releases) is stripped before embedding.
 AA_KEEP = set("ACDEFGHIKLMNPQRSTVWY")
 
+# Phrases that mark a family as uncharacterised, matched against the one-line
+# DE only. Matching the CC abstract as well looked more thorough and was wrong:
+# a well-characterised family whose abstract merely mentions that some members
+# have unknown function was flagged too, and the Prospector's list filled up
+# with the SPX domain, the MurJ lipid II flippase and the bacterial SH3 domain.
+# That is 949 false positives out of 7,874, and it undermines the one claim the
+# tab makes. The DE is the family's own summary of itself.
 DUF_PHRASES = (
     "unknown function",
-    "uncharacterised protein",
-    "uncharacterized protein",
+    "uncharacterised",
+    "uncharacterized",
     "function is unknown",
     "no known function",
 )
+
+# Pfam's own prefixes for families it considers uncharacterised.
+DUF_PREFIXES = ("DUF", "UPF")
 
 
 @dataclass
@@ -62,10 +72,9 @@ class Family:
 
     @property
     def is_duf(self) -> bool:
-        if self.identifier.upper().startswith("DUF"):
+        if self.identifier.upper().startswith(DUF_PREFIXES):
             return True
-        haystack = f"{self.description} {self.abstract}".lower()
-        return any(p in haystack for p in DUF_PHRASES)
+        return any(p in self.description.lower() for p in DUF_PHRASES)
 
 
 def _clean_abstract(lines: list[str]) -> str:

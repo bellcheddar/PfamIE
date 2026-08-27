@@ -345,12 +345,55 @@ struct EndToEndTests {
         #expect(edges.allSatisfy { $0.familyRow == sh2.row })
         #expect(edges.allSatisfy { $0.countBefore + $0.countAfter <= $0.proteinCount })
 
-        // SH3 sits N-terminal to SH2 in the Src-family kinases, and that has to
-        // survive into the ordering claim the Grammarian makes out loud.
+        // SH3 sits N-terminal to SH2 in the Src-family kinases, and the kinase
+        // domain sits C-terminal to it. Both have to survive into the ordering
+        // claim the Grammarian makes out loud.
         let sh3 = try #require(try await engine.store.family(accession: PfamID("PF00018")))
-        if let edge = edges.first(where: { $0.partnerRow == sh3.row }),
-           let before = edge.fractionBefore {
-            #expect(before > 0.5, "SH3 should usually precede SH2, got \(before)")
+        let kinase = try #require(try await engine.store.family(accession: PfamID("PF07714")))
+        let sh3Edge = try #require(edges.first { $0.partnerRow == sh3.row })
+        #expect(sh3Edge.ordering == .alwaysBefore)
+        let kinaseEdge = try #require(edges.first { $0.partnerRow == kinase.row })
+        #expect(kinaseEdge.ordering == .alwaysAfter)
+
+        // Domain order is strongly conserved but not universally: 2.3% of pairs
+        // genuinely vary, and if that ever reads as 0% the counting has broken
+        // and every row would claim an invariant order it has not measured.
+        var varying = 0
+        for family in try await engine.store.allFamilies().prefix(400) {
+            for edge in try await engine.store.cooccurrence(forFamilyRow: family.row) {
+                if case .mostlyBefore = edge.ordering { varying += 1 }
+                if case .mostlyAfter = edge.ordering { varying += 1 }
+            }
+        }
+        #expect(varying > 0, "no pair anywhere showed a mixed N-to-C order")
+    }
+
+    @Test("The unknown-function list contains families that really are unknown")
+    func unknownFunctionListIsClean() async throws {
+        let engine = try await engine()
+        let dufs = try await engine.store.unknownFunctionFamilies(limit: 40)
+        #expect(dufs.count == 40)
+
+        // Matching the CC abstract as well as the DE flagged 949 characterised
+        // families, and the Prospector's largest entries were things like the
+        // MurJ lipid II flippase and the ZIP zinc transporter. Every entry must
+        // say so in its own one-line summary or carry Pfam's own prefix.
+        for family in dufs {
+            let identifier = family.identifier.uppercased()
+            let summary = family.summary.lowercased()
+            let looksUnknown = identifier.hasPrefix("DUF") || identifier.hasPrefix("UPF")
+                || summary.contains("unknown")
+                || summary.contains("uncharacteri")
+            #expect(looksUnknown,
+                    "\(family.identifier): \(family.summary) is not an unknown-function family")
+        }
+
+        // Some families with a known transporter or enzyme name must NOT be in
+        // the list. These are the exact ones the loose rule let through.
+        for accession in ["PF03023", "PF03105", "PF06347"] {
+            if let family = try await engine.store.family(accession: PfamID(accession)) {
+                #expect(!family.isDUF, "\(family.identifier) should not be flagged unknown")
+            }
         }
     }
 
