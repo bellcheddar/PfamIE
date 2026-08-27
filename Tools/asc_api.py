@@ -252,6 +252,39 @@ def install_profiles() -> None:
         print(f"  installed  {attributes['name']}  -> {path.name}")
 
 
+def app_group_ready() -> bool:
+    """
+    True once the App Group is assigned to every bundle id that needs it.
+
+    App Groups have no API resource, so they cannot be created here, but the
+    assignment IS visible: the APP_GROUPS capability on a bundle id carries a
+    null `settings` until a group is attached to it. That makes it possible to
+    wait for the manual step and carry on automatically, rather than asking
+    someone to come back and say when they are done.
+    """
+    auth = token()
+    ids = existing_bundle_ids(auth)
+    ready = True
+    for identifier in APP_GROUP_BUNDLE_IDS:
+        bundle = ids.get(identifier)
+        if not bundle:
+            print(f"  {identifier}: not registered")
+            ready = False
+            continue
+        caps = call("GET", f"/bundleIds/{bundle}/bundleIdCapabilities",
+                    auth=auth).get("data", [])
+        groups = next((c for c in caps
+                       if (c.get("attributes") or {}).get("capabilityType") == "APP_GROUPS"),
+                      None)
+        settings = (groups or {}).get("attributes", {}).get("settings")
+        if settings:
+            print(f"  {identifier}: group assigned")
+        else:
+            print(f"  {identifier}: APP_GROUPS enabled but no group assigned yet")
+            ready = False
+    return ready
+
+
 def create_installer_certificate() -> None:
     """
     Create a Mac Installer Distribution certificate.
@@ -335,6 +368,9 @@ if __name__ == "__main__":
 
     elif command == "installer-certificate":
         create_installer_certificate()
+
+    elif command == "appgroup-status":
+        sys.exit(0 if app_group_ready() else 1)
 
     elif command == "capabilities":
         ensure_capabilities()
