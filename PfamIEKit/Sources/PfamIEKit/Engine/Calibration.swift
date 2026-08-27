@@ -2,16 +2,23 @@ import Foundation
 
 /// Turns cosine similarities into a confidence the app can state out loud.
 ///
-/// Every constant here is fitted in the forge against 26,286 held-out Pfam seed
-/// sequences, never guessed. Measured band behaviour at the shipped settings:
+/// Every constant here is fitted in the forge, never guessed, and fitted
+/// against *real UniProt proteins* rather than held-out Pfam seed sequences.
+/// That distinction is the difference between honest and flattering: the same
+/// pipeline scores 0.72 top-1 on held-out seeds and 0.43 on real proteins,
+/// because seeds are trimmed to domain boundaries and drawn from the very
+/// alignments the centroids were built from. Calibrated on seeds, an
+/// all-alanine nonsense sequence came back at 0.51.
 ///
-///   High  (p >= 0.80)  55.4% of queries, 98.4% of them correct
-///   Mid   (p >= 0.50)  15.6% of queries, 65.7% correct
-///   Low   (p >= 0.30)  14.3% of queries, 32.8% correct
-///   None  (p <  0.30)  14.7% of queries, 14.0% correct
+/// Measured on 625 real proteins held back from the fit:
+///
+///   High  (p >= 0.75)  22.7% of queries, 94.4% of them correct
+///   Mid   (p >= 0.45)  19.7% of queries, 55.3% correct
+///   Low   (p >= 0.25)  25.9% of queries, 30.9% correct
+///   None  (p <  0.25)  31.7% of queries,  9.6% correct
 ///
 /// The bottom band is why the Oracle can answer "no confident family": naming
-/// one there would be right about one time in seven.
+/// one there would be right about one time in ten.
 public struct Calibration: Sendable, Codable, Equatable {
 
     public enum Band: String, Sendable, Codable, CaseIterable {
@@ -32,25 +39,32 @@ public struct Calibration: Sendable, Codable, Equatable {
     public let midThreshold: Float
     public let abstainThreshold: Float
 
-    /// Held-out accuracy, carried so the app can show its own error rate
-    /// instead of asking the user to take the ranking on trust.
-    public let heldOutTop1: Float
-    public let heldOutTop5: Float
+    /// Accuracy on real proteins, carried so the app can show its own error
+    /// rate instead of asking the user to take the ranking on trust.
+    public let realTop1: Float
+    public let realTop5: Float
+
+    /// Measured accuracy per band, from the forge. Not hard-coded here: a
+    /// number baked into the app would silently stop matching the assets the
+    /// next time Pfam is re-forged.
+    public let bandAccuracy: [Band: Float]
 
     public init(
         temperature: Float,
         highThreshold: Float,
         midThreshold: Float,
         abstainThreshold: Float,
-        heldOutTop1: Float,
-        heldOutTop5: Float
+        realTop1: Float,
+        realTop5: Float,
+        bandAccuracy: [Band: Float]
     ) {
         self.temperature = temperature
         self.highThreshold = highThreshold
         self.midThreshold = midThreshold
         self.abstainThreshold = abstainThreshold
-        self.heldOutTop1 = heldOutTop1
-        self.heldOutTop5 = heldOutTop5
+        self.realTop1 = realTop1
+        self.realTop5 = realTop5
+        self.bandAccuracy = bandAccuracy
     }
 
     /// Softmax over the shortlist, at the fitted temperature.
@@ -81,11 +95,6 @@ public struct Calibration: Sendable, Codable, Equatable {
 
     /// What the app is entitled to claim for a result in this band.
     public func expectedAccuracy(for band: Band) -> Float {
-        switch band {
-        case .high: return 0.984
-        case .mid: return 0.657
-        case .low: return 0.328
-        case .none: return 0.140
-        }
+        bandAccuracy[band] ?? 0
     }
 }

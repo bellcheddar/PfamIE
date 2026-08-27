@@ -324,6 +324,25 @@ public final class PfamStore: @unchecked Sendable {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return [] }
 
+        // An accession is an exact request, not a ranking problem. Left to
+        // bm25, "PF00069" came back behind a family whose abstract happened to
+        // cite it, which is the wrong answer to an unambiguous question.
+        if let exact = try exactAccession(trimmed) {
+            let rest = try ftsSearch(trimmed, limit: limit)
+            return [exact] + rest.filter { $0.accession != exact.accession }
+        }
+        return try ftsSearch(trimmed, limit: limit)
+    }
+
+    private func exactAccession(_ text: String) throws -> Family? {
+        let candidate = text.uppercased()
+        guard candidate.hasPrefix("PF"), candidate.count >= 7,
+              candidate.dropFirst(2).allSatisfy(\.isNumber) else { return nil }
+        return try family(accession: PfamID(candidate))
+    }
+
+    private func ftsSearch(_ trimmed: String, limit: Int) throws -> [Family] {
+
         // Quote every term so punctuation in a query cannot become FTS syntax,
         // and suffix the last one so search-as-you-type matches prefixes.
         let terms = trimmed
@@ -340,7 +359,7 @@ public final class PfamStore: @unchecked Sendable {
             FROM family_fts
             JOIN family f ON f.row = family_fts.rowid
             WHERE family_fts MATCH ?
-            ORDER BY bm25(family_fts, 10.0, 4.0, 1.0)
+            ORDER BY bm25(family_fts, 20.0, 10.0, 4.0, 1.0)
             LIMIT ?
             """,
             bind: {

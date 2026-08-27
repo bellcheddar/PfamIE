@@ -51,8 +51,21 @@ def run(build_dir: Path, out_dir: Path, coreml_dir: Path) -> dict:
         np.linalg.norm(exact, axis=1) * np.linalg.norm(back, axis=1)
     )
 
-    calib = json.loads((build_dir / "whitening.json").read_text())
+    seed_calib = json.loads((build_dir / "whitening.json").read_text())
     coreml = json.loads((build_dir / "stage_coreml.json").read_text())
+
+    # Confidence comes from the real-protein calibration, never the held-out
+    # seed one. Seed sequences are domain-trimmed and drawn from the alignments
+    # the centroids were built from; calibrating on them promises an accuracy
+    # the app cannot deliver on what users actually paste.
+    real_path = build_dir / "calibration_real.json"
+    if not real_path.exists():
+        raise SystemExit(
+            "calibration_real.json is missing. Run forge/stage_calibrate_real.py "
+            "before emitting: shipping the seed-fitted confidence would overstate "
+            "accuracy by roughly 30 points."
+        )
+    calib = json.loads(real_path.read_text())
 
     bundle_files = list(out_dir.rglob("*")) + list(coreml_dir.rglob("*"))
     total = sum(f.stat().st_size for f in bundle_files if f.is_file())
@@ -71,11 +84,24 @@ def run(build_dir: Path, out_dir: Path, coreml_dir: Path) -> dict:
             "confidence_high": calib["confidence_high"],
             "confidence_mid": calib["confidence_mid"],
             "abstain_probability": calib["abstain_probability"],
-            "heldout_top1": calib["top1"],
-            "heldout_top5": calib["top5"],
-            "heldout_top20": calib["top20"],
-            "accuracy_high_band": calib["accuracy_high_band"],
-            "accuracy_mid_band": calib["accuracy_mid_band"],
+            # What the app achieves on real UniProt proteins, which is what it
+            # is entitled to quote.
+            "real_proteins": calib["proteins"],
+            "real_top1": calib["real_top1"],
+            "real_top5": calib["real_top5"],
+            "real_top20": calib["real_top20"],
+            "accuracy_high_band": calib["bands"]["high"]["accuracy"],
+            "accuracy_mid_band": calib["bands"]["mid"]["accuracy"],
+            "accuracy_low_band": calib["bands"]["low"]["accuracy"],
+            "accuracy_none_band": calib["bands"]["none"]["accuracy"],
+            "fraction_high": calib["bands"]["high"]["fraction"],
+            "fraction_mid": calib["bands"]["mid"]["fraction"],
+            "fraction_low": calib["bands"]["low"]["fraction"],
+            "fraction_none": calib["bands"]["none"]["fraction"],
+            # Kept for comparison, and clearly labelled: this is the number
+            # that flatters, and it describes the index rather than the app.
+            "heldout_seed_top1": seed_calib["top1"],
+            "heldout_seed_top5": seed_calib["top5"],
         },
         "models": {
             "protein": {

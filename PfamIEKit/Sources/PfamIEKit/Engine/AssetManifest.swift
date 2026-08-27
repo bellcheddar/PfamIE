@@ -14,14 +14,28 @@ public struct AssetManifest: Sendable, Codable {
         public let bytes: Int
     }
 
+    /// Fitted against real UniProt proteins, not held-out Pfam seed sequences.
+    /// The seed figures are carried too, clearly labelled, because the gap
+    /// between them is the whole reason this app quotes the numbers it does.
     public struct CalibrationEntry: Sendable, Codable {
         public let temperature: Float
         public let confidence_high: Float
         public let confidence_mid: Float
         public let abstain_probability: Float
-        public let heldout_top1: Float
-        public let heldout_top5: Float
-        public let heldout_top20: Float
+        public let real_proteins: Int
+        public let real_top1: Float
+        public let real_top5: Float
+        public let real_top20: Float
+        public let accuracy_high_band: Float
+        public let accuracy_mid_band: Float
+        public let accuracy_low_band: Float
+        public let accuracy_none_band: Float
+        public let fraction_high: Float
+        public let fraction_mid: Float
+        public let fraction_low: Float
+        public let fraction_none: Float
+        public let heldout_seed_top1: Float
+        public let heldout_seed_top5: Float
     }
 
     public let forge_date: String
@@ -38,8 +52,14 @@ public struct AssetManifest: Sendable, Codable {
             highThreshold: calibration.confidence_high,
             midThreshold: calibration.confidence_mid,
             abstainThreshold: calibration.abstain_probability,
-            heldOutTop1: calibration.heldout_top1,
-            heldOutTop5: calibration.heldout_top5
+            realTop1: calibration.real_top1,
+            realTop5: calibration.real_top5,
+            bandAccuracy: [
+                .high: calibration.accuracy_high_band,
+                .mid: calibration.accuracy_mid_band,
+                .low: calibration.accuracy_low_band,
+                .none: calibration.accuracy_none_band,
+            ]
         )
     }
 

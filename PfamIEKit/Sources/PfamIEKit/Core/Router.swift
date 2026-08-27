@@ -9,11 +9,11 @@ import SwiftUI
 @Observable
 public final class Router {
 
-    public var selectedTab: Tab = .galaxy
+    public var selectedTab: AppTab = .galaxy
 
     /// Per-tab navigation stacks, so switching tabs and coming back returns to
     /// where you were rather than to the root.
-    public var paths: [Tab: NavigationPath] = [:]
+    public var paths: [AppTab: NavigationPath] = [:]
 
     /// The family card, presented over everything as a sheet.
     public var presentedFamily: PfamID?
@@ -82,7 +82,7 @@ public final class Router {
         }
     }
 
-    public func path(for tab: Tab) -> Binding<NavigationPath> {
+    public func path(for tab: AppTab) -> Binding<NavigationPath> {
         Binding(
             get: { self.paths[tab] ?? NavigationPath() },
             set: { self.paths[tab] = $0 }

@@ -103,11 +103,11 @@ CREATE INDEX idx_cooc              ON cooccurrence(family_row, n_proteins DESC);
 # abstracts, which would roughly double the file for no benefit.
 FTS = """
 CREATE VIRTUAL TABLE family_fts USING fts5(
-    identifier, description, abstract,
+    accession, identifier, description, abstract,
     content='family', content_rowid='row', tokenize='porter unicode61'
 );
-INSERT INTO family_fts(rowid, identifier, description, abstract)
-    SELECT row, identifier, description, abstract FROM family;
+INSERT INTO family_fts(rowid, accession, identifier, description, abstract)
+    SELECT row, accession, identifier, description, abstract FROM family;
 INSERT INTO family_fts(family_fts) VALUES('optimize');
 """
 
@@ -254,7 +254,8 @@ def run(build_dir: Path, out_path: Path) -> dict:
     db.executemany("INSERT INTO cooccurrence VALUES (?,?,?,?,?)", cooc_rows)
 
     # ---- meta, indexes, full text ---------------------------------------
-    calib = json.loads((build_dir / "whitening.json").read_text())
+    seed_calib = json.loads((build_dir / "whitening.json").read_text())
+    calib = json.loads((build_dir / "calibration_real.json").read_text())
     embed = json.loads((build_dir / "stage_embed.json").read_text())
     desc = json.loads((build_dir / "stage_descemb.json").read_text())
     meta = {
@@ -270,9 +271,12 @@ def run(build_dir: Path, out_path: Path) -> dict:
         "confidence_high": str(calib["confidence_high"]),
         "confidence_mid": str(calib["confidence_mid"]),
         "abstain_probability": str(calib["abstain_probability"]),
-        "heldout_top1": str(calib["top1"]),
-        "heldout_top5": str(calib["top5"]),
-        "heldout_top20": str(calib["top20"]),
+        "real_top1": str(calib["real_top1"]),
+        "real_top5": str(calib["real_top5"]),
+        "real_top20": str(calib["real_top20"]),
+        "real_proteins": str(calib["proteins"]),
+        "heldout_seed_top1": str(seed_calib["top1"]),
+        "heldout_seed_top5": str(seed_calib["top5"]),
     }
     db.executemany("INSERT INTO meta VALUES (?,?)", list(meta.items()))
 

@@ -3,11 +3,13 @@ import Foundation
 /// A Pfam accession. A distinct type because the app passes these through
 /// navigation, deep links and context menus constantly, and `String` there
 /// invites confusion with an identifier like "Pkinase".
-public struct PfamID: Hashable, Sendable, Codable, CustomStringConvertible, Comparable {
+public struct PfamID: Hashable, Sendable, Codable, CustomStringConvertible, Comparable, Identifiable {
     public let rawValue: String
 
     public init(_ rawValue: String) { self.rawValue = rawValue }
     public var description: String { rawValue }
+    /// Its own identity, so it can drive a `.sheet(item:)` directly.
+    public var id: String { rawValue }
     public static func < (a: PfamID, b: PfamID) -> Bool { a.rawValue < b.rawValue }
 }
 
@@ -15,6 +17,8 @@ public struct ClanID: Hashable, Sendable, Codable, CustomStringConvertible {
     public let rawValue: String
     public init(_ rawValue: String) { self.rawValue = rawValue }
     public var description: String { rawValue }
+    /// Its own identity, so it can drive a `.sheet(item:)` directly.
+    public var id: String { rawValue }
 }
 
 public enum EntryType: String, Sendable, Codable, CaseIterable {

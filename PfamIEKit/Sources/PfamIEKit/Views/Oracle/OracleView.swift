@@ -31,7 +31,7 @@ public struct OracleView: View {
             .frame(maxWidth: .infinity)
         }
         .background(theme.bgDeep)
-        .navigationTitle(Tab.oracle.title)
+        .navigationTitle(AppTab.oracle.title)
         .sensoryFeedback(.success, trigger: result?.residueCount)
         .fileImporter(
             isPresented: $showingImporter,
@@ -182,6 +182,18 @@ public struct OracleView: View {
                                 .font(.subheadline)
                                 .foregroundStyle(theme.inkSecondary)
                                 .fixedSize(horizontal: false, vertical: true)
+                            // Say where the call came from. The headline is the
+                            // best-reading window, not the whole sequence, and
+                            // "a Pkinase domain at 270-520" is a more useful
+                            // and more honest claim than "this is a Pkinase".
+                            if let range = result.headlineRange {
+                                Label(
+                                    "Read from residues \(range.lowerBound) to \(range.upperBound)",
+                                    systemImage: "scope"
+                                )
+                                .font(.caption)
+                                .foregroundStyle(theme.inkSecondary)
+                            }
                         } else {
                             Text("No confident family")
                                 .font(.system(.title3, design: .rounded, weight: .semibold))
@@ -325,13 +337,5 @@ public struct OracleView: View {
         case .failure(let error):
             failure = "Could not open that file: \(error.localizedDescription)"
         }
-    }
-}
-
-extension PfamIEEngine.Classification {
-    /// True when the sequence was short enough that the architecture track
-    /// would only restate the headline call.
-    var singleDomainOnly: Bool {
-        windowsScanned <= 1
     }
 }

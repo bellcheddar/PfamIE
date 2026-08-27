@@ -88,13 +88,13 @@ public struct CalibrationNote: View {
         let percent = Int((accuracy * 100).rounded())
         switch band {
         case .high:
-            return "Measured on held-out Pfam seed sequences, calls this confident are correct about \(percent)% of the time."
+            return "Measured on real UniProt proteins, calls this confident are correct about \(percent)% of the time."
         case .mid:
             return "Calls at this confidence are correct about \(percent)% of the time. Worth checking against the domain architecture below."
         case .low:
             return "Calls this weak are correct about \(percent)% of the time. Treat the list as candidates, not an assignment."
         case .none:
-            return "Nothing reached the confidence threshold. The nearest families are shown as leads only: at this level the top hit is right about \(percent)% of the time."
+            return "Nothing reached the confidence threshold. The nearest families are shown as leads only: at this level the top hit is right about \(percent)% of the time on real proteins."
         }
     }
 }

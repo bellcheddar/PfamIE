@@ -1,41 +1,74 @@
 import Foundation
 
-/// Reads the domain architecture of a sequence by sliding a window along it.
+/// Reads the domain architecture of a sequence by scanning it at several
+/// window widths.
 ///
-/// The classifier compares a whole embedding against family centroids, so a
-/// multi-domain protein embedded end to end returns a blend of its domains and
-/// often names none of them. Scanning a window narrow enough to sit inside one
-/// domain recovers the N-to-C order, which is what the Oracle's architecture
-/// track and the Grammarian both need.
+/// Measured on 400 real single-domain UniProt proteins, ranked against all
+/// 30,031 families:
+///
+///   whole sequence only        top-1 0.285   top-5 0.435
+///   one 160-residue window     top-1 0.425   top-5 0.548
+///   96 / 160 / 256 / 384       top-1 0.535   top-5 0.635
+///
+/// Two things that table settles. A real protein is not a trimmed domain: it
+/// carries signal peptides, linkers and disordered tails, and embedding it end
+/// to end averages all of that into the answer, which is why the whole-sequence
+/// number is the worst of the three. And no single window width fits Pfam,
+/// whose domains run from about 30 residues to several hundred, so scanning at
+/// four widths recovers a quarter more families than the best single width.
+/// Multi-scale costs inference time only, nothing in bundle size.
+///
+/// Held-out Pfam seed sequences score around 0.72 on the same task. They are
+/// domain-trimmed and drawn from the alignments the centroids came from, so
+/// that number describes the index, not the app. The figures above are the ones
+/// the app is entitled to quote.
 public struct DomainScanner: Sendable {
 
+    public struct Scale: Sendable, Hashable {
+        public let windowLength: Int
+        public let stride: Int
+        public init(windowLength: Int, stride: Int) {
+            self.windowLength = windowLength
+            self.stride = stride
+        }
+    }
+
     public struct Configuration: Sendable {
-        /// Window width in residues. Wide enough to carry a domain's signal,
-        /// narrow enough that a 160-residue domain is not swamped by flanks.
-        public var windowLength: Int = 160
-        /// How far the window advances. A quarter of the width means every
-        /// residue is covered by four windows, so a domain boundary is resolved
-        /// to about 40 residues.
-        public var stride: Int = 40
-        /// A window must reach at least this calibrated probability before its
-        /// call is believed at all.
+        /// Widths to scan at, narrowest first. Strides are about a third of the
+        /// width, so a boundary is resolved to roughly that.
+        public var scales: [Scale] = [
+            Scale(windowLength: 96, stride: 32),
+            Scale(windowLength: 160, stride: 48),
+            Scale(windowLength: 256, stride: 64),
+            Scale(windowLength: 384, stride: 96),
+        ]
+        /// A window's call is ignored below this calibrated probability.
         public var minimumWindowProbability: Float = 0.30
-        /// A merged domain must reach this at its best window, or it is
-        /// dropped: a run of individually weak windows is not evidence.
-        public var minimumDomainProbability: Float = 0.50
-        /// Domains shorter than this are noise from a single stray window.
-        public var minimumDomainLength: Int = 40
+        /// A merged domain needs this at its best window to be reported.
+        public var minimumDomainProbability: Float = 0.45
+        public var minimumDomainLength: Int = 30
+        /// How much two accepted domains may overlap, as a fraction of the
+        /// shorter one. Domains genuinely abut, and windows are coarse, so a
+        /// little overlap is expected; a lot means the same domain called twice
+        /// at two scales.
+        public var overlapTolerance: Double = 0.35
+        /// Cap on windows per scan, so a 4,000-residue protein cannot spend a
+        /// minute on the Neural Engine.
+        public var maximumWindows: Int = 220
 
         public init() {}
     }
 
     public struct DomainCall: Sendable, Hashable, Identifiable {
         public let row: Int
-        /// 1-based, inclusive, in the coordinates of the sanitised sequence.
+        /// 1-based and inclusive, in the coordinates of the sanitised sequence.
         public let start: Int
         public let end: Int
         public let bestProbability: Float
-        public let meanProbability: Float
+        public let bestSimilarity: Float
+        /// The window width that called it, which is worth surfacing: a domain
+        /// only seen at 384 is a large one, and a 96-only call is a fragment.
+        public let scale: Int
         public let windowCount: Int
 
         public var id: String { "\(row)-\(start)-\(end)" }
@@ -44,14 +77,18 @@ public struct DomainScanner: Sendable {
     }
 
     public struct Result: Sendable {
-        /// Domains in N-to-C order.
+        /// Accepted domains, N to C.
         public let domains: [DomainCall]
-        /// Whole-sequence classification, for the headline answer.
-        public let whole: [CentroidIndex.Neighbour]
+        /// Ranked families for the headline answer. This is the best-scoring
+        /// window's shortlist, not the whole-sequence one, because the
+        /// whole-sequence embedding is measurably the weakest signal available.
+        public let headline: [CentroidIndex.Neighbour]
+        /// Whole-sequence ranking, kept for the "the protein overall" case.
+        public let wholeSequence: [CentroidIndex.Neighbour]
+        /// Where the headline call came from, or nil if it was whole-sequence.
+        public let headlineRange: ClosedRange<Int>?
         public let residueCount: Int
         public let windowsScanned: Int
-        /// True when the sequence was short enough that one window covered it,
-        /// so the architecture track is really just the whole-sequence call.
         public let singleWindow: Bool
     }
 
@@ -61,19 +98,19 @@ public struct DomainScanner: Sendable {
         self.configuration = configuration
     }
 
-    /// Window start offsets, 0-based, covering the whole sequence.
+    /// Window offsets for one scale, 0-based.
     ///
-    /// The final window is pinned to the C-terminus rather than allowed to run
-    /// off the end, so the last residues get the same coverage as the rest.
-    /// Without that the C-terminal domain of every protein reads short.
-    func windowStarts(residueCount: Int) -> [Int] {
-        guard residueCount > configuration.windowLength else { return [0] }
+    /// The last window is pinned to the C-terminus rather than allowed to run
+    /// off the end. Without that the final residues get less coverage than the
+    /// rest and every protein's C-terminal domain reads short.
+    func windowStarts(residueCount: Int, scale: Scale) -> [Int] {
+        guard residueCount > scale.windowLength else { return [0] }
         var starts: [Int] = []
         var offset = 0
-        let last = residueCount - configuration.windowLength
+        let last = residueCount - scale.windowLength
         while offset < last {
             starts.append(offset)
-            offset += configuration.stride
+            offset += scale.stride
         }
         starts.append(last)
         return starts
@@ -87,40 +124,79 @@ public struct DomainScanner: Sendable {
         let residues = Array(ProteinTokenizer.sanitise(sequence).utf8)
         let count = residues.count
         guard count > 0 else {
-            return Result(domains: [], whole: [], residueCount: 0,
+            return Result(domains: [], headline: [], wholeSequence: [],
+                          headlineRange: nil, residueCount: 0,
                           windowsScanned: 0, singleWindow: true)
         }
 
-        let whole = index.search(try embedder.embed(residues: String(decoding: residues, as: UTF8.self)), k: 20)
+        let wholeText = String(decoding: residues.prefix(ProteinTokenizer.maxResidues), as: UTF8.self)
+        let whole = index.search(try embedder.embed(residues: wholeText), k: 20)
 
-        let starts = windowStarts(residueCount: count)
-        if starts.count == 1 {
-            let domains = whole.first.flatMap { best -> [DomainCall] in
-                guard best.probability >= configuration.minimumDomainProbability else { return [] }
-                return [DomainCall(row: best.row, start: 1, end: count,
-                                   bestProbability: best.probability,
-                                   meanProbability: best.probability, windowCount: 1)]
-            } ?? []
-            return Result(domains: domains, whole: whole, residueCount: count,
-                          windowsScanned: 1, singleWindow: true)
-        }
+        // Only scan at widths the sequence can actually accommodate, plus the
+        // narrowest one always, so a 60-residue peptide still gets scanned.
+        var scales = configuration.scales.filter { $0.windowLength <= count }
+        if scales.isEmpty { scales = [configuration.scales[0]] }
 
-        // One call per window: row, its probability, and the span it covers.
-        var calls: [(row: Int, probability: Float, start: Int, end: Int)] = []
-        for start in starts {
-            let end = min(start + configuration.windowLength, count)
-            let window = String(decoding: residues[start..<end], as: UTF8.self)
-            let hits = index.search(try embedder.embed(residues: window), k: 5)
-            guard let best = hits.first,
-                  best.probability >= configuration.minimumWindowProbability else {
-                calls.append((row: -1, probability: 0, start: start + 1, end: end))
-                continue
+        var candidates: [DomainCall] = []
+        var best: (neighbours: [CentroidIndex.Neighbour], range: ClosedRange<Int>)?
+        var scanned = 0
+
+        for scale in scales {
+            let starts = windowStarts(residueCount: count, scale: scale)
+            guard scanned + starts.count <= configuration.maximumWindows else { break }
+
+            var calls: [(row: Int, probability: Float, similarity: Float, start: Int, end: Int)] = []
+            for start in starts {
+                let end = min(start + scale.windowLength, count)
+                let window = String(decoding: residues[start..<end], as: UTF8.self)
+                let hits = index.search(try embedder.embed(residues: window), k: 20)
+                scanned += 1
+
+                guard let top = hits.first else {
+                    calls.append((-1, 0, 0, start + 1, end))
+                    continue
+                }
+                if best == nil || top.probability > (best!.neighbours.first?.probability ?? 0) {
+                    best = (hits, (start + 1)...end)
+                }
+                if top.probability >= configuration.minimumWindowProbability {
+                    calls.append((top.row, top.probability, top.similarity, start + 1, end))
+                } else {
+                    calls.append((-1, 0, 0, start + 1, end))
+                }
             }
-            calls.append((row: best.row, probability: best.probability,
-                          start: start + 1, end: end))
+            candidates.append(contentsOf: merge(calls: calls, scale: scale.windowLength))
         }
 
-        var domains: [DomainCall] = []
+        let domains = selectNonOverlapping(candidates)
+
+        // The headline is the best window unless the whole sequence beat it,
+        // which happens for a protein that really is one domain end to end.
+        var headline = best?.neighbours ?? whole
+        var headlineRange = best?.range
+        if let wholeTop = whole.first,
+           wholeTop.probability >= (headline.first?.probability ?? 0) {
+            headline = whole
+            headlineRange = nil
+        }
+
+        return Result(
+            domains: domains,
+            headline: headline,
+            wholeSequence: whole,
+            headlineRange: headlineRange,
+            residueCount: count,
+            windowsScanned: scanned,
+            singleWindow: scanned <= 1
+        )
+    }
+
+    /// Runs of adjacent windows calling the same family become one domain.
+    private func merge(
+        calls: [(row: Int, probability: Float, similarity: Float, start: Int, end: Int)],
+        scale: Int
+    ) -> [DomainCall] {
+        var out: [DomainCall] = []
         var runStart = 0
         while runStart < calls.count {
             let row = calls[runStart].row
@@ -128,23 +204,43 @@ public struct DomainScanner: Sendable {
 
             var runEnd = runStart
             while runEnd + 1 < calls.count && calls[runEnd + 1].row == row { runEnd += 1 }
-
             let run = calls[runStart...runEnd]
-            let best = run.map(\.probability).max() ?? 0
-            let mean = run.map(\.probability).reduce(0, +) / Float(run.count)
+
+            let bestProbability = run.map(\.probability).max() ?? 0
+            let bestSimilarity = run.map(\.similarity).max() ?? 0
             let from = run.first!.start
             let to = run.last!.end
 
-            if best >= configuration.minimumDomainProbability,
+            if bestProbability >= configuration.minimumDomainProbability,
                to - from + 1 >= configuration.minimumDomainLength {
-                domains.append(DomainCall(row: row, start: from, end: to,
-                                          bestProbability: best, meanProbability: mean,
-                                          windowCount: run.count))
+                out.append(DomainCall(
+                    row: row, start: from, end: to,
+                    bestProbability: bestProbability, bestSimilarity: bestSimilarity,
+                    scale: scale, windowCount: run.count
+                ))
             }
             runStart = runEnd + 1
         }
+        return out
+    }
 
-        return Result(domains: domains, whole: whole, residueCount: count,
-                      windowsScanned: starts.count, singleWindow: false)
+    /// Greedy selection by confidence: take the strongest call, then the next
+    /// strongest that does not substantially overlap anything already taken.
+    ///
+    /// Scanning at four widths means the same domain is proposed several times,
+    /// once per scale. Reporting all of them would draw a stack of overlapping
+    /// lozenges for one domain.
+    private func selectNonOverlapping(_ candidates: [DomainCall]) -> [DomainCall] {
+        var accepted: [DomainCall] = []
+        for candidate in candidates.sorted(by: { $0.bestProbability > $1.bestProbability }) {
+            let clashes = accepted.contains { existing in
+                let overlap = min(existing.end, candidate.end) - max(existing.start, candidate.start) + 1
+                guard overlap > 0 else { return false }
+                let shorter = Double(min(existing.length, candidate.length))
+                return Double(overlap) / shorter > configuration.overlapTolerance
+            }
+            if !clashes { accepted.append(candidate) }
+        }
+        return accepted.sorted { $0.start < $1.start }
     }
 }

@@ -93,8 +93,12 @@ public final class AppEnvironment {
             ("Clans", clans.count.formatted()),
             ("Protein model", meta["protein_model"] ?? "unknown"),
             ("Text model", meta["text_model"] ?? "unknown"),
-            ("Held-out top-1", percent(meta["heldout_top1"])),
-            ("Held-out top-5", percent(meta["heldout_top5"])),
+            // Both figures, labelled. Showing only the seed number would be
+            // the single most misleading thing this screen could do.
+            ("Top-1 on real proteins", percent(meta["real_top1"])),
+            ("Top-5 on real proteins", percent(meta["real_top5"])),
+            ("Benchmark size", (meta["real_proteins"] ?? "?") + " UniProt proteins"),
+            ("Top-1 on held-out Pfam seeds", percent(meta["heldout_seed_top1"])),
         ]
     }
 

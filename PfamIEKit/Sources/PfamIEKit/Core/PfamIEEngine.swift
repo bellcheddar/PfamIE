@@ -100,9 +100,14 @@ public actor PfamIEEngine {
         public let sequence: String
         public let residueCount: Int
         public let truncated: Bool
+        /// Ranked families for the headline answer, from whichever window read
+        /// the sequence most confidently.
         public let hits: [Hit]
         public let domains: [Domain]
         public let band: Calibration.Band
+        /// The residues the headline call came from, or nil when the whole
+        /// sequence read more confidently than any window did.
+        public let headlineRange: ClosedRange<Int>?
         public let embedding: [Float]
         public let windowsScanned: Int
 
@@ -118,6 +123,7 @@ public actor PfamIEEngine {
             public let start: Int
             public let end: Int
             public let probability: Float
+            public let scale: Int
             public var id: String { "\(family.accession)-\(start)" }
             public var length: Int { end - start + 1 }
         }
@@ -125,16 +131,26 @@ public actor PfamIEEngine {
         /// True when nothing reached the abstain threshold, in which case the
         /// app says so instead of naming the best of a bad set.
         public var isConfident: Bool { band != .none }
+
+        /// True when the sequence was short enough that the architecture track
+        /// would only restate the headline call.
+        public var singleDomainOnly: Bool { windowsScanned <= 1 }
     }
 
     public func classify(sequence: String) throws -> Classification {
         let cleaned = ProteinTokenizer.sanitise(sequence)
         let result = try scanner.scan(sequence: cleaned, embedder: embedder, index: index)
 
-        let hitRows = result.whole.prefix(10).map(\.row)
-        let hitFamilies = try store.families(rows: Array(hitRows))
-        let hits = zip(hitFamilies, result.whole.prefix(10)).map {
-            Classification.Hit(family: $0.0, similarity: $0.1.similarity, probability: $0.1.probability)
+        let ranked = Array(result.headline.prefix(10))
+        let hitFamilies = try store.families(rows: ranked.map(\.row))
+        let byHitRow = Dictionary(uniqueKeysWithValues: hitFamilies.map { ($0.row, $0) })
+        let hits = ranked.compactMap { neighbour -> Classification.Hit? in
+            guard let family = byHitRow[neighbour.row] else { return nil }
+            return Classification.Hit(
+                family: family,
+                similarity: neighbour.similarity,
+                probability: neighbour.probability
+            )
         }
 
         let domainFamilies = try store.families(rows: result.domains.map(\.row))
@@ -143,7 +159,7 @@ public actor PfamIEEngine {
             guard let family = byRow[call.row] else { return nil }
             return Classification.Domain(
                 family: family, start: call.start, end: call.end,
-                probability: call.bestProbability
+                probability: call.bestProbability, scale: call.scale
             )
         }
 
@@ -153,8 +169,11 @@ public actor PfamIEEngine {
             truncated: cleaned.utf8.count > ProteinTokenizer.maxResidues,
             hits: hits,
             domains: domains,
-            band: calibration.band(for: result.whole.first?.probability ?? 0),
-            embedding: try embedder.embed(residues: String(cleaned.prefix(ProteinTokenizer.maxResidues))),
+            band: calibration.band(for: result.headline.first?.probability ?? 0),
+            headlineRange: result.headlineRange,
+            embedding: try embedder.embed(
+                residues: String(cleaned.prefix(ProteinTokenizer.maxResidues))
+            ),
             windowsScanned: result.windowsScanned
         )
     }

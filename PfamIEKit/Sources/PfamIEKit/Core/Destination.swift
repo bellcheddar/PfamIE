@@ -23,7 +23,7 @@ public enum Destination: Hashable, Sendable {
 }
 
 /// The five tabs, in order.
-public enum Tab: Int, CaseIterable, Hashable, Sendable, Identifiable {
+public enum AppTab: Int, CaseIterable, Hashable, Sendable, Identifiable {
     case galaxy, oracle, grammarian, prospector, fieldGuide
 
     public var id: Int { rawValue }
