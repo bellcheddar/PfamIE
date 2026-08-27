@@ -52,6 +52,23 @@ echo "Structure viewer:"
 if [ -e "$RES/bundle/molstar" ]; then MOL="$RES/bundle/molstar"; else MOL="$RES/molstar"; fi
 check_file "$MOL/molstar.js" 3000
 
+echo "Icon:"
+# The compiled icon at the bundle root, not the .appiconset: an empty
+# appiconset still builds, and the app ships with a blank tile.
+if [ -f "$RES/AppIcon.icns" ]; then
+    note "AppIcon.icns" "$(du -sh "$RES/AppIcon.icns" | cut -f1)"
+elif ls "$RES"/AppIcon*.png >/dev/null 2>&1; then
+    for icon in "$RES"/AppIcon60x60@2x.png "$RES"/AppIcon76x76@2x~ipad.png; do
+        if [ -f "$icon" ]; then
+            note "$(basename "$icon")" "$(du -sh "$icon" | cut -f1)"
+        else
+            note "$(basename "$icon")" "MISSING"; fail=1
+        fi
+    done
+else
+    note "app icon" "MISSING"; fail=1
+fi
+
 echo "Signing:"
 authority=$(codesign -dvv "$APP" 2>&1 | grep "^Authority=" | head -1)
 if [ -n "$authority" ]; then note "authority" "${authority#Authority=}"; else note "authority" "unsigned (fine for a debug build)"; fi
