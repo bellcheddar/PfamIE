@@ -132,8 +132,113 @@ def build(build_dir: Path, out: Path) -> dict:
     }
 
 
+def build_vision_layers(build_dir: Path, out_dir: Path) -> dict:
+    """
+    The three parallax layers visionOS wants.
+
+    visionOS does not take a flat 1024 PNG. It wants an AppIcon.solidimagestack
+    of back, middle and front layers, which it separates in depth and shifts as
+    the wearer moves. An .appiconset with a single image builds without
+    complaint and produces a bundle with no icon at all, which is what the
+    archive verifier caught.
+
+    The split is the obvious one for this app: the ground behind, the Pfam
+    point cloud in the middle, the query comet in front. The parallax then
+    means something rather than being decoration.
+    """
+    families = json.loads(
+        gzip.open(build_dir / "families.json.gz", "rt", encoding="utf-8").read()
+    )
+    coords = np.load(build_dir / "umap3d.npy")
+    scale = 4
+    big = (SIZE * scale, SIZE * scale)
+
+    spread = coords.std(axis=0)
+    ax, ay = np.argsort(-spread)[:2]
+    xs, ys = coords[:, ax], coords[:, ay]
+    span = max(np.percentile(np.abs(xs), 99.5), np.percentile(np.abs(ys), 99.5))
+    centre = SIZE * scale / 2
+    extent = SIZE * scale * 0.42 / max(span, 1e-6)
+
+    # Back: the ground, opaque, with a faint central glow so the middle layer
+    # has something to sit against when the layers separate.
+    back = Image.new("RGB", big, BG)
+    glow = Image.new("RGB", big, (0, 0, 0))
+    ImageDraw.Draw(glow).ellipse(
+        [centre - SIZE * scale * 0.34, centre - SIZE * scale * 0.34,
+         centre + SIZE * scale * 0.34, centre + SIZE * scale * 0.34],
+        fill=(14, 24, 46),
+    )
+    glow = glow.filter(ImageFilter.GaussianBlur(radius=40 * scale))
+    back = Image.fromarray(np.clip(
+        np.asarray(back, np.int16) + np.asarray(glow, np.int16), 0, 255).astype(np.uint8))
+
+    # Middle: the families, transparent so the ground shows through.
+    middle = Image.new("RGBA", big, (0, 0, 0, 0))
+    draw = ImageDraw.Draw(middle)
+    for family, x, y in zip(families, xs, ys):
+        px = centre + float(x) * extent
+        py = centre + float(y) * extent
+        if not (0 <= px < big[0] and 0 <= py < big[1]):
+            continue
+        colour = clan_colour(family["clan_hue"])
+        radius = 2.4 * scale if family["clan"] else 1.7 * scale
+        alpha = 110 if family["is_duf"] else 255
+        draw.ellipse([px - radius, py - radius, px + radius, py + radius],
+                     fill=colour + (alpha,))
+
+    # Front: the comet alone, so it floats clear of the cloud.
+    front = Image.new("RGBA", big, (0, 0, 0, 0))
+    cd = ImageDraw.Draw(front)
+    cx, cy = centre + SIZE * scale * 0.20, centre - SIZE * scale * 0.18
+    r = 13 * scale
+    cd.ellipse([cx - r, cy - r, cx + r, cy + r], fill=FLARE + (255,))
+    for i in range(1, 26):
+        t = i / 26
+        tr = r * (1 - t) * 0.85
+        tx, ty = cx - i * 5.5 * scale, cy + i * 4.6 * scale
+        cd.ellipse([tx - tr, ty - tr, tx + tr, ty + tr],
+                   fill=FLARE + (int(255 * (1 - t) * 0.8),))
+    front = front.filter(ImageFilter.GaussianBlur(radius=1.4 * scale))
+
+    stack = out_dir / "AppIcon.solidimagestack"
+
+    # Ordered FRONT to BACK, not back to front. Xcode requires that the last
+    # layer in the array be fully opaque, and rejects the build with "The last
+    # visionOS App Icon Layer with content, 'Front', must be a fully opaque
+    # bitmap. The pixel at position (0, 0) has an alpha value of 0." The last
+    # entry is the backmost layer, so the opaque ground goes last.
+    layers = [("Front", front, "RGBA"), ("Middle", middle, "RGBA"), ("Back", back, "RGB")]
+    if stack.exists():
+        import shutil
+        shutil.rmtree(stack)
+    stack.mkdir(parents=True)
+    (stack / "Contents.json").write_text(json.dumps({
+        "info": {"author": "xcode", "version": 1},
+        "layers": [{"filename": f"{name}.solidimagestacklayer"} for name, _, _ in layers],
+    }, indent=2))
+
+    for name, image, mode in layers:
+        layer = stack / f"{name}.solidimagestacklayer"
+        content = layer / "Content.imageset"
+        content.mkdir(parents=True)
+        (layer / "Contents.json").write_text(json.dumps(
+            {"info": {"author": "xcode", "version": 1}}, indent=2))
+        (content / "Contents.json").write_text(json.dumps({
+            "images": [{"filename": f"{name}.png", "idiom": "vision", "scale": "2x"}],
+            "info": {"author": "xcode", "version": 1},
+        }, indent=2))
+        image.resize((SIZE, SIZE), Image.LANCZOS).convert(mode).save(
+            content / f"{name}.png", "PNG")
+
+    return {"stack": str(stack), "layers": [n for n, _, _ in layers]}
+
+
 if __name__ == "__main__":
     root = Path(__file__).resolve().parent.parent
     print(json.dumps(
         build(root / "assets/build", root / "assets/icon/AppIcon-1024.png"), indent=2
     ))
+    print(json.dumps(build_vision_layers(
+        root / "assets/build",
+        root / "Apps/visionOS/Assets.xcassets"), indent=2))

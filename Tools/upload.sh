@@ -22,6 +22,17 @@ fi
 
 rm -rf "$EXPORT_DIR"
 mkdir -p "$EXPORT_DIR"
+# Manual signing means the export has to be told which profile belongs to which
+# bundle id. Without the mapping xcodebuild fails with the unhelpful
+# 'exportArchive "PfamIE.app" requires a provisioning profile.'
+case "$ARCHIVE" in
+  *macos*)    PROFILES='<key>com.mdeller.pfamie</key><string>PfamIE macOS App Store</string>' ;;
+  *visionos*) PROFILES='<key>com.mdeller.pfamie</key><string>PfamIE visionOS App Store</string>' ;;
+  *)          PROFILES='<key>com.mdeller.pfamie</key><string>PfamIE App Store</string>
+        <key>com.mdeller.pfamie.watchkitapp</key><string>PfamIE watchOS App Store</string>
+        <key>com.mdeller.pfamie.watchkitapp.widget</key><string>PfamIE watchOS Widget App Store</string>' ;;
+esac
+
 cat > "$EXPORT_DIR/ExportOptions.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -29,6 +40,13 @@ cat > "$EXPORT_DIR/ExportOptions.plist" <<PLIST
 <dict>
     <key>method</key><string>app-store-connect</string>
     <key>teamID</key><string>SYNV8TWB5Z</string>
+    <key>signingStyle</key><string>manual</string>
+    <key>signingCertificate</key><string>Apple Distribution</string>
+    <key>installerSigningCertificate</key><string>3rd Party Mac Developer Installer</string>
+    <key>provisioningProfiles</key>
+    <dict>
+        $PROFILES
+    </dict>
     <key>uploadSymbols</key><true/>
     <key>manageAppVersionAndBuildNumber</key><false/>
 </dict>

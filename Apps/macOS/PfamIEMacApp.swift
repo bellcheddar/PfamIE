@@ -23,6 +23,10 @@ struct PfamIEMacApp: App {
             }
             .onOpenURL { url in openSequence(at: url) }
         }
+        // A desk instrument, not a utility panel: the Galaxy needs room and
+        // the three-column layout wants width. The old default was whatever
+        // the minimum happened to be, which opened at 940 by 672.
+        .defaultSize(width: 1440, height: 900)
         .commands { PfamIECommands(app: app) }
 
         Settings {

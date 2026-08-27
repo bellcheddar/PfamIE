@@ -248,6 +248,65 @@ def install_profiles() -> None:
         print(f"  installed  {attributes['name']}  -> {path.name}")
 
 
+def create_installer_certificate() -> None:
+    """
+    Create a Mac Installer Distribution certificate.
+
+    Exporting a Mac App Store package needs one, and `xcodebuild` fails with
+    'No signing certificate "Mac Installer Distribution" found'. The API can
+    issue it from a certificate signing request, so the private key is
+    generated here, never leaves this machine, and goes straight into the login
+    keychain with the issued certificate.
+    """
+    import base64
+    import subprocess
+    import tempfile
+
+    auth = token()
+    for item in call("GET", "/certificates?limit=200", auth=auth).get("data", []):
+        if item["attributes"].get("certificateType") == "MAC_INSTALLER_DISTRIBUTION":
+            print("  present  Mac Installer Distribution")
+            return
+
+    with tempfile.TemporaryDirectory() as work:
+        key = Path(work) / "installer.key"
+        csr = Path(work) / "installer.csr"
+        crt = Path(work) / "installer.cer"
+
+        subprocess.run(["openssl", "genrsa", "-out", str(key), "2048"],
+                       check=True, capture_output=True)
+        subprocess.run([
+            "openssl", "req", "-new", "-key", str(key), "-out", str(csr),
+            "-subj", "/CN=PfamIE Mac Installer/O=Marc Deller/C=GB",
+        ], check=True, capture_output=True)
+
+        created = call("POST", "/certificates", {
+            "data": {
+                "type": "certificates",
+                "attributes": {
+                    "certificateType": "MAC_INSTALLER_DISTRIBUTION",
+                    "csrContent": csr.read_text(),
+                },
+            }
+        }, auth=auth)
+        crt.write_bytes(base64.b64decode(
+            created["data"]["attributes"]["certificateContent"]))
+
+        # -A so codesign and productbuild can use it without a prompt per call.
+        for path in (key, crt):
+            subprocess.run(["security", "import", str(path),
+                            "-k", str(Path.home() / "Library/Keychains/login.keychain-db"),
+                            "-A"], check=False, capture_output=True)
+
+    found = subprocess.run(["security", "find-identity", "-v"],
+                           capture_output=True, text=True).stdout
+    if "Mac Installer Distribution" in found or "3rd Party Mac Developer Installer" in found:
+        print("  created  Mac Installer Distribution, imported into the login keychain")
+    else:
+        print("  created at Apple, but the keychain import did not take. "
+              "Double-click the certificate in Keychain Access to finish.")
+
+
 def app_records() -> list[dict]:
     payload = call("GET", "/apps?limit=200")
     return [
@@ -269,6 +328,9 @@ if __name__ == "__main__":
 
     elif command == "profiles":
         ensure_profiles()
+
+    elif command == "installer-certificate":
+        create_installer_certificate()
 
     elif command == "capabilities":
         ensure_capabilities()

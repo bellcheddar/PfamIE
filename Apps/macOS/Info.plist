@@ -20,6 +20,11 @@
     <string>$(CURRENT_PROJECT_VERSION)</string>
     <key>LSMinimumSystemVersion</key>
     <string>$(MACOSX_DEPLOYMENT_TARGET)</string>
+    <!-- Required for Mac App Store submission, and it must agree with the
+         primary category set in App Store Connect (REFERENCE). altool rejects
+         the package outright without it: error 90242. -->
+    <key>LSApplicationCategoryType</key>
+    <string>public.app-category.reference</string>
     <key>NSHumanReadableCopyright</key>
     <string>Marc C. Deller, D.Phil.</string>
     <key>ITSAppUsesNonExemptEncryption</key>

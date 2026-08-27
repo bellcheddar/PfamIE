@@ -70,11 +70,13 @@ if [ -e "$RES/bundle/molstar" ]; then MOL="$RES/bundle/molstar"; else MOL="$RES/
 check_file "$MOL/molstar.js" 3000
 
 echo "Icon:"
-# The compiled icon at the bundle root, not the .appiconset: an empty
-# appiconset still builds, and the app ships with a blank tile.
+# Where the compiled icon lives differs by platform, and an empty icon set
+# builds cleanly on all of them. visionOS is the awkward one: it takes a
+# layered AppIcon.solidimagestack, not a flat PNG, and compiles the layers into
+# Assets.car rather than writing files at the bundle root.
 if [ -f "$RES/AppIcon.icns" ]; then
-    note "AppIcon.icns" "$(du -sh "$RES/AppIcon.icns" | cut -f1)"
-elif ls "$RES"/AppIcon*.png >/dev/null 2>&1; then
+    note "AppIcon.icns" "$(du -sh "$RES/AppIcon.icns" | cut -f1)"          # macOS
+elif ls "$RES"/AppIcon60x60@2x.png >/dev/null 2>&1; then                   # iOS
     for icon in "$RES"/AppIcon60x60@2x.png "$RES"/AppIcon76x76@2x~ipad.png; do
         if [ -f "$icon" ]; then
             note "$(basename "$icon")" "$(du -sh "$icon" | cut -f1)"
@@ -82,6 +84,16 @@ elif ls "$RES"/AppIcon*.png >/dev/null 2>&1; then
             note "$(basename "$icon")" "MISSING"; fail=1
         fi
     done
+elif [ -f "$RES/Assets.car" ]; then                                        # visionOS
+    LAYERS=$(xcrun assetutil --info "$RES/Assets.car" 2>/dev/null \
+             | grep -oE 'AppIcon[\\/]+(Front|Middle|Back)' | sort -u | wc -l | tr -d ' ')
+    if [ "${LAYERS:-0}" -ge 3 ]; then
+        note "AppIcon.solidimagestack" "3 layers in Assets.car"
+    elif grep -q AppIcon "$RES/Info.plist" 2>/dev/null; then
+        note "app icon" "declared but only $LAYERS layers compiled"; fail=1
+    else
+        note "app icon" "MISSING"; fail=1
+    fi
 else
     note "app icon" "MISSING"; fail=1
 fi
