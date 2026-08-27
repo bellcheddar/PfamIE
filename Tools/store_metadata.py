@@ -267,8 +267,13 @@ def set_age_rating(auth: str, app: str) -> None:
 # APP_IPAD_PRO_3GEN_129 accepts the 13 inch 2064x2752 ones: Apple did not add
 # new display types for those sizes, which is not obvious from the names.
 SCREENSHOT_PLAN = {
+    # Both iPhone slots are filled. App Store Connect dims and locks whichever
+    # size it decides to derive from another, so supplying only one leaves the
+    # other showing as read-only. APP_IPHONE_65 at 1242x2688 is the pairing a
+    # already-accepted app in this account uses, alongside the same iPad type.
     "IOS": [
         ("APP_IPHONE_67", "screenshots/iphone69"),
+        ("APP_IPHONE_65", "screenshots/iphone65"),
         ("APP_IPAD_PRO_3GEN_129", "screenshots/ipad13"),
     ],
     "VISION_OS": [("APP_APPLE_VISION_PRO", "screenshots/visionos")],
