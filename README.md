@@ -2,7 +2,7 @@
 
 > **The entire Pfam universe as an on-device inference engine: paste a sequence, get a family, offline.**
 
-![swift](https://img.shields.io/badge/swift-6.3-F05138?logo=swift&logoColor=white) ![platforms](https://img.shields.io/badge/platforms-iOS%20%C2%B7%20iPadOS%20%C2%B7%20macOS%20%C2%B7%20visionOS%20%C2%B7%20watchOS-000000?logo=apple&logoColor=white) ![xcode](https://img.shields.io/badge/xcode-26.6-1575F9?logo=xcode&logoColor=white) ![ane](https://img.shields.io/badge/Neural%20Engine-4.4x%20over%20CPU-0A84FF?logo=apple&logoColor=white) ![coreml](https://img.shields.io/badge/Core%20ML-float16%20%C2%B7%208--bit%20palettised-555555) ![esm2](https://img.shields.io/badge/ESM--2-t6%208M-5EEAD4) ![minilm](https://img.shields.io/badge/MiniLM-L6--v2-A78BFA) ![accelerate](https://img.shields.io/badge/Accelerate-vDSP%20%C2%B7%20BLAS-FB923C) ![realitykit](https://img.shields.io/badge/RealityKit-volumetric-8B5CF6) ![molstar](https://img.shields.io/badge/Mol*-4.9.0-4C6EF5) ![sqlite](https://img.shields.io/badge/SQLite-FTS5-003B57?logo=sqlite&logoColor=white) ![python](https://img.shields.io/badge/python-3.12.13-3776AB?logo=python&logoColor=white) ![torch](https://img.shields.io/badge/pytorch-2.13.0-EE4C2C?logo=pytorch&logoColor=white) ![transformers](https://img.shields.io/badge/transformers-5.16.1-FFD21E?logo=huggingface&logoColor=black) ![coremltools](https://img.shields.io/badge/coremltools-9.0-777777) ![umap](https://img.shields.io/badge/umap--learn-0.5.12-9b51e0) ![tests](https://img.shields.io/badge/tests-25%20passing-00897B) ![data](https://img.shields.io/badge/data-Pfam%2038.2%20%C2%B7%20InterPro%20%C2%B7%20UniProt%20%C2%B7%20AlphaFold-467FF7) ![offline](https://img.shields.io/badge/inference-100%25%20on%20device-00d084) ![licence](https://img.shields.io/badge/licence-MIT-1C7D3E) ![author](https://img.shields.io/badge/author-Marc%20C.%20Deller%2C%20D.Phil.-1C244B)
+![swift](https://img.shields.io/badge/swift-6.3-F05138?logo=swift&logoColor=white) ![platforms](https://img.shields.io/badge/platforms-iOS%20%C2%B7%20iPadOS%20%C2%B7%20macOS%20%C2%B7%20visionOS%20%C2%B7%20watchOS-000000?logo=apple&logoColor=white) ![xcode](https://img.shields.io/badge/xcode-26.6-1575F9?logo=xcode&logoColor=white) ![ane](https://img.shields.io/badge/Neural%20Engine-4.4x%20over%20CPU-0A84FF?logo=apple&logoColor=white) ![coreml](https://img.shields.io/badge/Core%20ML-float16%20%C2%B7%208--bit%20palettised-555555) ![esm2](https://img.shields.io/badge/ESM--2-t6%208M-5EEAD4) ![minilm](https://img.shields.io/badge/MiniLM-L6--v2-A78BFA) ![accelerate](https://img.shields.io/badge/Accelerate-vDSP%20%C2%B7%20BLAS-FB923C) ![realitykit](https://img.shields.io/badge/RealityKit-volumetric-8B5CF6) ![molstar](https://img.shields.io/badge/Mol*-4.9.0-4C6EF5) ![sqlite](https://img.shields.io/badge/SQLite-FTS5-003B57?logo=sqlite&logoColor=white) ![python](https://img.shields.io/badge/python-3.12.13-3776AB?logo=python&logoColor=white) ![torch](https://img.shields.io/badge/pytorch-2.13.0-EE4C2C?logo=pytorch&logoColor=white) ![transformers](https://img.shields.io/badge/transformers-5.16.1-FFD21E?logo=huggingface&logoColor=black) ![coremltools](https://img.shields.io/badge/coremltools-9.0-777777) ![umap](https://img.shields.io/badge/umap--learn-0.5.12-9b51e0) ![tests](https://img.shields.io/badge/tests-34%20passing-00897B) ![data](https://img.shields.io/badge/data-Pfam%2038.2%20%C2%B7%20InterPro%20%C2%B7%20UniProt%20%C2%B7%20AlphaFold-467FF7) ![offline](https://img.shields.io/badge/inference-100%25%20on%20device-00d084) ![licence](https://img.shields.io/badge/licence-MIT-1C7D3E) ![author](https://img.shields.io/badge/author-Marc%20C.%20Deller%2C%20D.Phil.-1C244B)
 
 <table>
 <tr>
@@ -255,8 +255,8 @@ The script is negative-tested: strip a model from a copy of the bundle and it mu
 | Xcode | 26.6 or later |
 | Deployment | iOS 18, macOS 15, visionOS 2, watchOS 11 |
 | Forge | Python 3.12 (numba and coremltools are not yet reliable on 3.14) |
-| Bundle | About 146 MB: 58 MB database, 40 MB matrices, 39 MB models, 5 MB Mol\* |
-| Network | Only for AlphaFold structures. Classification, architecture and search are entirely offline. |
+| Bundle | About 125 MB: 58 MB database, 21 MB matrices (int8), 39 MB models, 5 MB Mol\* |
+| Network | Only for AlphaFold structures, and for InterProScan verification if you opt in. Classification, architecture and search are entirely offline. |
 
 ## ✅ To Do
 
@@ -277,13 +277,28 @@ Roadmap for PfamIE, in dependency order. Suggestions welcome.
 - [x] **Trimmed the database.** 83 MB to 58 MB. The `signature` column and its unique index cost 16 MB to repeat what `architecture_member` already held.
 - [x] **Bundle verification, negative-tested.** Checks every model, matrix, database and the compiled icon at the bundle root.
 - [x] **App icon, drawn from the real map.** Asserts RGB with no alpha, because the App Store rejects an alpha channel and PIL hands you RGBA by default.
-- [ ] **Trim the matrices.** int8 per-row quantisation of the centroids is free (top-1 0.7150 against 0.7149 at float16) and halves them from 18 MB to 9.6 MB; the same for the description embeddings saves 11.5 MB, putting the bundle near 125 MB.
-- [ ] **A larger protein model.** ESM-2 t6-8M is 8M parameters and 0.43 top-1 on real proteins is its honest ceiling. Measure t12-35M on the real-protein benchmark, never on held-out seeds.
-- [ ] **Boundary refinement.** Domain calls resolve to about a third of a window width. A finer second pass around each accepted boundary would sharpen the architecture track.
-- [ ] **visionOS polish.** Gaze-and-pinch selection in the volume works; hand-tracked comet placement and an immersive space do not exist yet.
-- [ ] **VisionKit sequence scanning.** Read a printed sequence with the camera.
-- [ ] **HMMER verification.** An optional, clearly labelled network path to check a call against the real thing at EBI.
-- [ ] **watchOS complication.** The synced glance view is built; the complication is not.
+- [x] **Trimmed the matrices to int8.** Free: top-1 0.7150 against 0.7149 at float16, an identical top hit for every description probe, worst round-trip cosine 0.99990. Centroids 18 MB to 9.7 MB, descriptions 23 MB to 11.7 MB, bundle 146 MB to 125 MB. The scale is applied to the result rather than to every element, since the product of a row and the query is linear in the row.
+- [x] **Measured ESM-2 t12-35M.** A bigger win than top-1 alone suggests, and a real cost. Awaiting a decision on whether to adopt it, ship both behind a picker, or stay put.
+
+  | | t6-8M (shipped) | t12-35M |
+  |---|---|---|
+  | Real-protein top-1 | 0.430 | **0.471** |
+  | Real-protein top-5 | 0.493 | **0.540** |
+  | Multi-domain recall | 0.358 | **0.478** |
+  | Multi-domain precision | 0.76 | **0.84** |
+  | Neural Engine, per window | **6.0 ms** | 31.3 ms |
+  | Model in the bundle (8-bit) | **16.5 MB** | 34.4 MB |
+  | 536-residue protein, end to end | **247 ms** | ~1.3 s |
+- [x] **Boundary refinement: tried, measured, rejected.** Worth recording so nobody tries it again blind. The premise needed correcting twice. On single-domain proteins boundaries are already good (median error 6 and 7 residues, IoU 0.87), but that population flatters the scanner, because in a protein that is one domain end to end almost any call scores well. On multi-domain proteins, where boundaries actually matter, median error is 48 and 54 residues and IoU is 0.44.
+
+  Two fixes were measured against InterPro's own Pfam locations for 220 multi-domain proteins. A second pass of narrow 48-residue tiles scored against the family already called made it clearly **worse** (IoU 0.44 to 0.19): tiles that narrow do not carry enough signal to match a centroid built from ~120-residue domains. Per-residue vote segmentation lifted recall (0.358 to 0.471) but nearly halved precision (0.76 to 0.41) by over-calling. Neither shipped.
+
+  The real limit is detection, not localisation: the scanner never finds two thirds of the domains, and that is a model-capacity problem. t12-35M lifts recall to 0.478 at *higher* precision, which is where the gain actually is.
+- [x] **visionOS immersive space.** The volume is a box you lean into; the immersive space puts the map around you at room scale and lets you walk through it. Mixed immersion rather than full, because this is an instrument and seeing the desk is part of using one. Same batched per-clan meshes.
+- [ ] **Hand-tracked comet placement.** Deferred deliberately rather than left unsaid: it needs ARKit hand tracking, which cannot be exercised in the simulator, so it would ship untested. Worth doing on real hardware.
+- [x] **Camera sequence scanning.** VisionKit live text, but the OCR is the easy half: the work is deciding which recognised text is a sequence, and that is tested without a camera. Whitespace is skipped rather than separating (printed sequences come in blocks of ten), runs are built from the twenty standard residues only (O and U are among the commonest letters in English and are not amino acids, so "PROTEIN" breaks at the O), and a run must sit under an English-bigram density of 0.17. Measured: 300 real Pfam seed sequences peak at 0.148, capitalised prose starts at 0.200.
+- [x] **Online verification against InterProScan 5.** EBI's hmmscan POST endpoint is gone (405) and the maintained route is InterProScan, which is also the authoritative answer PfamIE approximates rather than merely a second opinion. Result parsing filters to Pfam signatures, since a Gene3D superfamily would read as a disagreement that is not one, and is tested against a captured response rather than by queueing jobs on shared public infrastructure. The email is the user's own: it is their sequence and their job. This is the only feature that leaves the device, so it asks first and says what it will send.
+- [x] **watchOS complication.** Circular, corner, inline and rectangular, showing the last family the phone classified. It reads an App Group rather than `UserDefaults.standard`, because a widget extension has its own container and the standard store would be a different, always-empty one: the classic way a complication ships stuck on its placeholder.
 - [ ] **TestFlight.** Everything up to the archive is scripted; the App Store Connect app record is the one step the API cannot do.
 
 ## 🔬 Data sources and licences

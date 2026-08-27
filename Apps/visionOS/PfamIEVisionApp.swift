@@ -39,6 +39,14 @@ struct PfamIEVisionApp: App {
         }
         .windowStyle(.volumetric)
         .defaultSize(width: 1.2, height: 1.2, depth: 1.2, in: .meters)
+
+        // Mixed immersion, not full: this is an instrument, and seeing the
+        // desk and the people around you is part of using one.
+        ImmersiveSpace(id: "galaxy-immersive") {
+            ImmersiveGalaxy()
+                .environment(app)
+        }
+        .immersionStyle(selection: .constant(.mixed), in: .mixed)
     }
 }
 
@@ -49,22 +57,45 @@ struct PfamIEVisionApp: App {
 /// showpiece of the visionOS build would have shipped unreachable.
 struct OpenVolumeButton: View {
     @Environment(\.openWindow) private var openWindow
-    @State private var opened = false
+    @Environment(\.openImmersiveSpace) private var openImmersive
+    @Environment(\.dismissImmersiveSpace) private var dismissImmersive
+    @State private var immersed = false
 
     var body: some View {
-        Button {
-            openWindow(id: "galaxy-volume")
-            opened = true
-        } label: {
-            Label("Open the Galaxy as a volume", systemImage: "cube.transparent")
-                .labelStyle(.iconOnly)
-                .font(.title2)
-                .padding(10)
+        VStack(spacing: 10) {
+            Button {
+                openWindow(id: "galaxy-volume")
+            } label: {
+                Label("Open the Galaxy as a volume", systemImage: "cube.transparent")
+                    .labelStyle(.iconOnly)
+                    .font(.title2)
+                    .padding(10)
+            }
+            .help("Open the Pfam universe as a volume you can walk around")
+            .accessibilityLabel("Open the Galaxy as a volume")
+
+            Button {
+                Task {
+                    if immersed {
+                        await dismissImmersive()
+                        immersed = false
+                    } else {
+                        immersed = await openImmersive(id: "galaxy-immersive") == .opened
+                    }
+                }
+            } label: {
+                Label(immersed ? "Leave the Galaxy" : "Step into the Galaxy",
+                      systemImage: immersed ? "arrow.down.right.and.arrow.up.left" : "sparkles")
+                    .labelStyle(.iconOnly)
+                    .font(.title2)
+                    .padding(10)
+            }
+            .help("Put the Pfam universe around you at room scale")
+            .accessibilityLabel(immersed ? "Leave the immersive Galaxy"
+                                         : "Step into the immersive Galaxy")
         }
         .buttonStyle(.borderless)
         .glassBackgroundEffect()
-        .help("Open the Pfam universe as a volume you can walk around")
-        .accessibilityLabel("Open the Galaxy as a volume")
     }
 }
 
