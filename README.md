@@ -62,6 +62,9 @@ The other four views open as ordinary windows reusing the shared SwiftUI code un
 
 The whole point of the app is that a transformer runs locally, fast enough that classification feels like a lookup. Measured on an M1 Max:
 
+Reproduce with `./Tools/benchmark.sh`. They are excluded from the normal test
+run on purpose: see the note below the table.
+
 | Operation | Time | Notes |
 |---|---|---|
 | ESM-2 t12-35M embedding, 512 tokens, **Neural Engine** | **31.3 ms** | |
@@ -73,6 +76,15 @@ The whole point of the app is that a transformer runs locally, fast enough that 
 The smaller t6-8M tier runs at 6.0 ms per window and classifies the same
 protein in 247 ms, four times faster. It was the shipped model until the
 measurements below said otherwise.
+
+**Benchmarks only mean something run alone**, which took two goes to get right.
+Left in the normal test run, the other suites drive Core ML concurrently, the
+Neural Engine queue saturates, and a 31 ms embedding measures at 494 ms while
+the CPU path stays flat: the benchmark concluded the ANE was five times
+*slower*. Interleaving the two paths to equalise the load made it worse again,
+because alternating between an ANE-resident model and a CPU one reloads the
+Neural Engine context every call. Consecutive blocks, in an opt-in suite that
+runs on its own, is the only arrangement that measures the model.
 
 ### How the models are shaped for the ANE
 

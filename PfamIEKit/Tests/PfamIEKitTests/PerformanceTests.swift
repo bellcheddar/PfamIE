@@ -9,7 +9,26 @@ import Testing
 /// print rather than assert tight bounds, because absolute timings depend on
 /// the machine, but they do assert the ordering: if the ANE is ever slower
 /// than the CPU, something has fallen off it.
-@Suite("Performance", .enabled(if: Assets.isForged), .serialized)
+/// Off by default. Run them alone:
+///
+///     PFAMIE_BENCH=1 swift test -c release --filter Performance
+///
+/// `.serialized` orders this suite internally but does nothing about the other
+/// suites, which run concurrently and also drive Core ML. With the 31 ms
+/// t12-35M model that saturates the Neural Engine queue, and a single
+/// embedding that takes 31 ms alone was measured at 494 ms under load, while
+/// the CPU path stayed flat. The numbers were not just noisy, they inverted:
+/// the benchmark concluded the Neural Engine was five times *slower*.
+///
+/// Interleaving the two paths was not enough, because a saturated ANE really
+/// is slower per request. A benchmark that runs under uncontrolled load
+/// measures the load, and a build that fails at random is worse than no check
+/// at all, so these are opt-in and the README's figures come from running them
+/// this way.
+@Suite("Performance",
+       .enabled(if: Assets.isForged
+                && ProcessInfo.processInfo.environment["PFAMIE_BENCH"] != nil),
+       .serialized)
 struct PerformanceTests {
 
     private func time(_ rounds: Int, _ body: () throws -> Void) rethrows -> Double {
@@ -25,33 +44,19 @@ struct PerformanceTests {
         let ane = try Assets.proteinEmbedder(computeUnits: .all)
         let cpu = try Assets.proteinEmbedder(computeUnits: .cpuOnly)
 
-        // Interleaved, one call each per round, rather than timing 30 of one
-        // and then 30 of the other. Other suites run concurrently and also use
-        // Core ML, and with a 31 ms model that contention swamps the
-        // difference: measured back to back the two came out equal at 74 ms
-        // each, while standalone the same model is 31 ms on the ANE and 76 on
-        // the CPU. Interleaving makes both paths see the same load, so the
-        // ratio means something whatever else is running.
-        _ = try ane.embed(sequence: Probes.lysozyme)
-        _ = try cpu.embed(sequence: Probes.lysozyme)
+        // Each path in its own tight loop, not interleaved.
+        //
+        // Interleaving looked like the careful thing to do, and made it worse:
+        // alternating between an ANE-resident model and a CPU one forces the
+        // Neural Engine context to be reloaded every call, and the ANE path
+        // measured 86 ms against the CPU's 76 even with nothing else running.
+        // Measured in consecutive blocks, the same model is 31 ms on the ANE
+        // and 76 on the CPU. The suite is opt-in and serialised precisely so
+        // consecutive blocks are safe here.
+        let aneMs = try time(25) { _ = try ane.embed(sequence: Probes.lysozyme) }
+        let cpuMs = try time(25) { _ = try cpu.embed(sequence: Probes.lysozyme) }
 
-        var aneTotal = 0.0
-        var cpuTotal = 0.0
-        let rounds = 15
-        for _ in 0..<rounds {
-            var mark = Date()
-            _ = try ane.embed(sequence: Probes.lysozyme)
-            aneTotal += Date().timeIntervalSince(mark)
-
-            mark = Date()
-            _ = try cpu.embed(sequence: Probes.lysozyme)
-            cpuTotal += Date().timeIntervalSince(mark)
-        }
-        let aneMs = aneTotal / Double(rounds) * 1000
-        let cpuMs = cpuTotal / Double(rounds) * 1000
-
-        print(String(format: "protein model, 512 tokens: ANE %.1f ms, CPU %.1f ms, speedup %.1fx "
-                     + "(under concurrent test load; standalone is faster)",
+        print(String(format: "protein model, 512 tokens: ANE %.1f ms, CPU %.1f ms, speedup %.1fx",
                      aneMs, cpuMs, cpuMs / aneMs))
         #expect(aneMs < cpuMs, "the Neural Engine path is not faster; check it is still eligible")
     }

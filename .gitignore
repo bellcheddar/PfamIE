@@ -27,3 +27,5 @@ assets/icon/
 
 # Release build products
 build/
+assets/build_t12/
+assets/coreml_t12/

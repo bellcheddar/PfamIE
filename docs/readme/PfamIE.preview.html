@@ -106,6 +106,7 @@
 <p>The other four views open as ordinary windows reusing the shared SwiftUI code untouched. There is no visionOS fork of the app: one <code>RootView</code> adapts by size class across iPhone, iPad, Mac and Vision Pro.</p>
 <h2>⚡ On the Neural Engine</h2>
 <p>The whole point of the app is that a transformer runs locally, fast enough that classification feels like a lookup. Measured on an M1 Max:</p>
+<p>Reproduce with <code>./Tools/benchmark.sh</code>. They are excluded from the normal test run on purpose: see the note below the table.</p>
 <div class="emd-table-wrap"><table class="emd-data-table">
 <thead>
 <tr>
@@ -143,6 +144,7 @@
 </tbody>
 </table></div>
 <p>The smaller t6-8M tier runs at 6.0 ms per window and classifies the same protein in 247 ms, four times faster. It was the shipped model until the measurements below said otherwise.</p>
+<p><strong>Benchmarks only mean something run alone</strong>, which took two goes to get right. Left in the normal test run, the other suites drive Core ML concurrently, the Neural Engine queue saturates, and a 31 ms embedding measures at 494 ms while the CPU path stays flat: the benchmark concluded the ANE was five times <em>slower</em>. Interleaving the two paths to equalise the load made it worse again, because alternating between an ANE-resident model and a CPU one reloads the Neural Engine context every call. Consecutive blocks, in an opt-in suite that runs on its own, is the only arrangement that measures the model.</p>
 <h3>🤗 How the models are shaped for the ANE</h3>
 <ul>
 <li><strong>Fixed input length.</strong> ESM-2 is converted at exactly 512 tokens and MiniLM at 256. Flexible shapes make the Neural Engine ineligible and, on Metal, force a graph recompilation per distinct shape.</li>
