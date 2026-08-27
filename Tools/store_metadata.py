@@ -499,6 +499,69 @@ def reorder_all_screenshots(auth: str, app: str) -> None:
                 order_screenshots(auth, st["id"])
 
 
+# App Review contact. Reused across every platform version.
+REVIEW_CONTACT = {
+    "contactFirstName": "Marc",
+    "contactLastName": "Deller",
+    "contactPhone": "13023586093",
+    "contactEmail": "marc@marcdeller.com",
+    "demoAccountRequired": False,
+}
+
+REVIEW_NOTES = """\
+PfamIE classifies protein sequences against all 30,031 Pfam families entirely on the device. A quantised ESM-2 protein language model runs on the Apple Neural Engine. There is no account, no sign-in, and no sequence leaves the device unless the reviewer explicitly asks for online verification.
+
+TO TRY IT
+1. Open the Oracle tab.
+2. Paste this human SRC kinase sequence, or any protein sequence in one-letter amino-acid codes or FASTA:
+
+MGSNKSKPKDASQRRRSLEPAENVHGAGGGAFPASQTPSKPASADGHRGPSAAFAPAAAEPKLFGGFNSSDTVTSPQRAGPLAGGVTTFVALYDYESRTETDLSFKKGERLQIVNNTEGDWWLAHSLSTGQTGYIPSNYVAPSDSIQAEEWYFGKITRRESERLLLNAENPRGTFLVRESETTKGAYCLSVSDFDNAKGLNVKHYKIRKLDSGGFYITSRTQFNSLQQLVAYYSKHADGLCHRLTTVCPTSKPQTQGLAKDAWEIPRESLRLEVKLGQGCFGEVWMGTWNGTTRVAIKTLKPGTMSPEAFLQEAQVMKKLRHEKLVQLYAVVSEEPIYIVTEYMSKGSLLDFLKGETGKYLRLPQLVDMAAQIASGMAYVERMNYVHRDLRAANILVGENLVCKVADFGLARLIEDNEYTARQGAKFPIKWTAPEAALYGRFTIKSDVWSFGILLTELTTKGRVPYPGMVNREVLDQVERGYRMPCPPECPESLHDLMCQCWRKEPEERPTFEYLQAFLEDYFTSTEPQYQPGENL
+
+3. Tap Classify. It should report PK_Tyr_Ser-Thr at high confidence.
+4. The Galaxy, Grammarian, Prospector and Field Guide tabs then explore the same 30,031 families. In the Field Guide, try the phrase "breaks down plastic".
+
+TIMING
+A classification scans the sequence at four window widths, so a 500-residue protein takes a second or two. That is expected, not a hang.
+
+OFFLINE
+Everything above works in Airplane Mode. Two features use the network and neither is required: opening a predicted structure fetches a model from the AlphaFold database at EMBL-EBI, and the Oracle can optionally verify a call against InterProScan at EMBL-EBI. The latter is off unless an email address is entered in Settings, and it asks for confirmation each time, naming exactly what it will send.
+
+PRIVACY
+The app collects nothing. No accounts, no analytics, no advertising, no tracking. Sequences are never written to disk.
+
+RESEARCH USE
+PfamIE is a research and teaching tool. It produces predictions, not assignments, and states the measured accuracy of every confidence band. It is not a medical device and nothing it reports is intended for diagnostic use.
+"""
+
+
+def set_review_details(auth: str, app: str) -> None:
+    """
+    App Review contact information, per platform version.
+
+    Required before submission and easy to miss, because App Store Connect
+    lists it under the version rather than the app: a multiplatform app needs
+    it filled in separately for each of iOS, macOS and visionOS.
+    """
+    for version in versions(auth, app):
+        platform = version["attributes"]["platform"]
+        existing = call("GET", f"/appStoreVersions/{version['id']}/appStoreReviewDetail",
+                        auth=auth).get("data")
+        attributes = {**REVIEW_CONTACT, "notes": REVIEW_NOTES}
+        if existing:
+            call("PATCH", f"/appStoreReviewDetails/{existing['id']}", {
+                "data": {"type": "appStoreReviewDetails", "id": existing["id"],
+                         "attributes": attributes}
+            }, auth=auth)
+            print(f"  {platform}: review contact updated")
+        else:
+            call("POST", "/appStoreReviewDetails", {
+                "data": {"type": "appStoreReviewDetails", "attributes": attributes,
+                         "relationships": {"appStoreVersion": {
+                             "data": {"type": "appStoreVersions", "id": version["id"]}}}}
+            }, auth=auth)
+            print(f"  {platform}: review contact created")
+
+
 def set_content_rights(auth: str, app: str) -> None:
     call("PATCH", f"/apps/{app}", {
         "data": {"type": "apps", "id": app,
@@ -524,6 +587,7 @@ if __name__ == "__main__":
         "screenshots": upload_screenshots,
         "eula": set_eula,
         "attach-builds": attach_builds,
+        "review": set_review_details,
         "reorder": reorder_all_screenshots,
     }
     if command == "all":

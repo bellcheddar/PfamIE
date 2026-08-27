@@ -62,7 +62,33 @@ ERROR: Cannot determine the Apple ID from Bundle ID 'com.mdeller.pfamie'
 That is a missing app record, not a bundle-ID problem. `upload.sh` detects that
 exact string and says so.
 
-## Step 2: create the App Group (outstanding, watch only)
+## Step 2: App Privacy (outstanding, one form)
+
+App Store Connect blocks submission with:
+
+> Before you can submit this app for review, an Admin must provide information
+> about the app's privacy practices in the App Privacy section.
+
+**This is not scriptable.** There is no privacy relationship on `/apps` and the
+documented `appDataUsages` resources return 404, and it is not a permissions
+problem: the same key can read `/users`, which only an Admin key can do. It is
+an API gap.
+
+For PfamIE the form is a single answer, because the app genuinely collects
+nothing:
+
+1. App Store Connect -> PfamIE -> **App Privacy**
+2. Get Started -> **"No, we do not collect data from this app"**
+3. Publish
+
+That is the whole thing. Nothing the app does counts as collection: sequences
+never leave the device, structures are fetched by public accession with no
+identifier attached, and the optional InterProScan verification sends the
+user's own address to EMBL-EBI at their explicit request, which is disclosed in
+[the privacy policy](https://bellcheddar.github.io/PfamIE/privacy.html) rather
+than collected by us.
+
+## Step 3: create the App Group (outstanding, watch only)
 
 The complication reads the last classification from an App Group shared with
 the watch app. Without it the widget extension has its own container and the
@@ -93,6 +119,18 @@ target from `project.yml` and the App Group from both entitlements files
 removes the requirement entirely, at the cost of the complication.
 
 ## Then
+
+Everything else that blocks review is scripted:
+
+```bash
+python Tools/store_metadata.py review          # App Review contact, per version
+python Tools/store_metadata.py attach-builds   # once Apple finishes processing
+```
+
+App Review contact information is per **version**, not per app, so a
+multiplatform record needs it on each of iOS, macOS and visionOS. The notes
+field is worth writing properly: it tells the reviewer how to exercise an app
+that needs a protein sequence pasted into it before it does anything.
 
 ```bash
 set -a; source ~/.claude/skills/marcs-vibe-coding/credentials.env; set +a
