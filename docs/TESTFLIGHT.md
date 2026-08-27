@@ -8,7 +8,7 @@ to click.
 
 | | |
 |---|---|
-| Team | `SYNV8TWB5Z` (Marc Deller), settled, never asked about |
+| Team | Read from `APPLE_TEAM_ID` in the environment, so no account identifier is committed |
 | Bundle IDs | `com.mdeller.pfamie`, `.watchkitapp`, `.watchkitapp.widget`, all registered over the API |
 | Provisioning profiles | Five, created and installed over the API |
 | Signing | Release signs manually against `Apple Distribution`; Debug stays automatic, so a device build from Xcode still just works. Configured in `project.yml`, so it survives project regeneration |
@@ -16,10 +16,15 @@ to click.
 | Verification | `./Tools/verify-archive.sh <archive>`, negative-tested |
 | Upload | `./Tools/upload.sh <archive>` |
 
-The macOS archive has been produced, signed with `Apple Distribution: Marc
-Deller (SYNV8TWB5Z)`, and verified complete end to end.
+The macOS and visionOS archives have been produced, signed for distribution and
+verified complete end to end, and both builds are uploaded.
 
-## Step 1: create the App Store Connect app record
+## Step 1: create the App Store Connect app record (done)
+
+> This has been done for PfamIE, and the listing is fully populated. The
+> section is kept because it is the step no API can perform, and the next app
+> will need it.
+
 
 Apple forbids this over the API:
 
@@ -57,7 +62,7 @@ ERROR: Cannot determine the Apple ID from Bundle ID 'com.mdeller.pfamie'
 That is a missing app record, not a bundle-ID problem. `upload.sh` detects that
 exact string and says so.
 
-## Step 2: create the App Group (watch only)
+## Step 2: create the App Group (outstanding, watch only)
 
 The complication reads the last classification from an App Group shared with
 the watch app. Without it the widget extension has its own container and the

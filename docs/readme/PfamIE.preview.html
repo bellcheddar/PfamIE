@@ -473,82 +473,34 @@ swift test -c release --package-path PfamIEKit
 <h2>✅ To Do</h2>
 <p>Roadmap for PfamIE, in dependency order. Suggestions welcome.</p>
 <ul class="emd-tasklist">
-<li><span class="emd-check">&#9989;</span> <strong>Phase 0: the data forge.</strong> Reads the Pfam 38.2 flatfiles offline rather than making 30,031 API calls. Only architectures and family sizes need InterPro.</li>
-<li><span class="emd-check">&#9989;</span> <strong>Whitening the centroid space.</strong> Measured, not assumed: held-out top-1 0.514 to 0.715, nearest-neighbour cosine 0.968 to 0.677. Shrinkage sweep found the plateau at eps 1e-5, which caps eigen-amplification at 34x.</li>
-<li><span class="emd-check">&#9989;</span> <strong>Stratified centroid sequences.</strong> Choosing by closeness to median length selects near-duplicates: PF00062 got six alpha-lactalbumins out of eight and could not recognise hen lysozyme. An even sweep across the alignment moved it from rank 42 to rank 2.</li>
-<li><span class="emd-check">&#9989;</span> <strong>Core ML conversion with parity asserted on the Neural Engine.</strong> The whitened vector's sum of squares overflows float16 in the norm reduction, so the ANE returned all zeros while the CPU looked perfect. Scaling <code>W</code> is free because the output is L2 normalised.</li>
-<li><span class="emd-check">&#9989;</span> <strong>Phase 1: engine.</strong> Memory-mapped float16 matrices, chunked Accelerate gemv at 1.8 ms per query, raw sqlite3 store, Swift ESM-2 and WordPiece tokenisers.</li>
-<li><span class="emd-check">&#9989;</span> <strong>Multi-scale domain scanning.</strong> Whole-sequence embedding is the <em>weakest</em> signal on real proteins (0.285 top-1). Four window widths give 0.535 at no bundle cost.</li>
-<li><span class="emd-check">&#9989;</span> <strong>Confidence calibrated on real proteins.</strong> Not on held-out seed sequences, which overstate accuracy by about 30 points. A test fails the build if the shipped calibration ever matches the seed-fitted one.</li>
-<li><span class="emd-check">&#9989;</span> <strong>Phases 2 and 3: five tabs.</strong> Plus the universal family card and the closed-enum router.</li>
+<li><span class="emd-check">&#9989;</span> <strong>Phase 0: the data forge.</strong> Reads the Pfam 38.2 flatfiles offline rather than making 30,031 API calls, so one 52 MB download replaces the lot. Only architectures and family sizes need InterPro.</li>
+<li><span class="emd-check">&#9989;</span> <strong>Whitening the centroid space.</strong> Measured, not assumed: held-out top-1 went 0.514 to 0.715 and the mean nearest-neighbour cosine 0.968 to 0.677. A shrinkage sweep found the plateau at eps 1e-5, which also caps eigen-amplification at a conservative 34x.</li>
+<li><span class="emd-check">&#9989;</span> <strong>Stratified centroid sequences.</strong> Choosing the sequences closest to the median seed length selects near-duplicates: PF00062 got six alpha-lactalbumins out of eight and could not recognise hen lysozyme. An even sweep across the alignment moved it from rank 42 to rank 2.</li>
+<li><span class="emd-check">&#9989;</span> <strong>Core ML conversion with parity asserted on the Neural Engine.</strong> The whitened vector's sum of squares overflows float16 in the norm reduction, so the ANE returned all zeros while the CPU path looked perfect. Scaling the whitening matrix is free because the output is L2 normalised.</li>
+<li><span class="emd-check">&#9989;</span> <strong>Phase 1: engine.</strong> Memory-mapped matrices with a chunked Accelerate gemv at 1.8 ms per query, a raw sqlite3 store, and Swift ESM-2 and WordPiece tokenisers.</li>
+<li><span class="emd-check">&#9989;</span> <strong>Multi-scale domain scanning.</strong> Whole-sequence embedding turned out to be the weakest signal on real proteins at 0.285 top-1; four window widths give 0.535, at no cost in bundle size.</li>
+<li><span class="emd-check">&#9989;</span> <strong>Confidence calibrated on real proteins.</strong> Held-out seed sequences overstate accuracy by about 25 points, so the shipped temperature and bands are fitted on 2,500 real UniProt proteins. A test fails the build if the shipped calibration ever matches the seed-fitted one.</li>
+<li><span class="emd-check">&#9989;</span> <strong>Phases 2 and 3: five tabs.</strong> Galaxy, Oracle, Grammarian, Prospector and Field Guide, plus the universal family card and the closed-enum router that stops any tab becoming a dead end.</li>
 <li><span class="emd-check">&#9989;</span> <strong>Structure layer.</strong> Bundled Mol*, AlphaFold mmCIF with disk caching, domain highlighting in UniProt numbering, and a quiet offline note rather than a spinner that never resolves.</li>
-<li><span class="emd-check">&#9989;</span> <strong>Tightened the unknown-function rule.</strong> Matching the CC abstract as well as the summary flagged 949 characterised families: the Prospector's largest entries were the MurJ lipid II flippase and the ZIP zinc transporter. Matching the family's own summary plus Pfam's DUF and UPF prefixes gives 6,925.</li>
-<li><span class="emd-check">&#9989;</span> <strong>Said conserved domain order in words.</strong> Every co-occurrence row read "100%", which looks like a bug and is not one: 97.7% of pairs have an invariant N-to-C order.</li>
-<li><span class="emd-check">&#9989;</span> <strong>All five platforms building.</strong> visionOS needed the volumetric Galaxy rebuilt as batched meshes (30,031 entities would never reach frame rate) and a route to the volume, which a volumetric <code>WindowGroup</code> does not open on its own.</li>
-<li><span class="emd-check">&#9989;</span> <strong>Trimmed the database.</strong> 83 MB to 58 MB. The <code>signature</code> column and its unique index cost 16 MB to repeat what <code>architecture_member</code> already held.</li>
-<li><span class="emd-check">&#9989;</span> <strong>Bundle verification, negative-tested.</strong> Checks every model, matrix, database and the compiled icon at the bundle root.</li>
-<li><span class="emd-check">&#9989;</span> <strong>App icon, drawn from the real map.</strong> Asserts RGB with no alpha, because the App Store rejects an alpha channel and PIL hands you RGBA by default.</li>
-<li><span class="emd-check">&#9989;</span> <strong>Trimmed the matrices to int8.</strong> Free: top-1 0.7150 against 0.7149 at float16, an identical top hit for every description probe, worst round-trip cosine 0.99990. Centroids 18 MB to 9.7 MB, descriptions 23 MB to 11.7 MB, bundle 146 MB to 125 MB. The scale is applied to the result rather than to every element, since the product of a row and the query is linear in the row.</li>
-<li><span class="emd-check">&#9989;</span> <strong>Adopted ESM-2 t12-35M.</strong> Measured first, then chosen. The top-1 gain is real but the multi-domain numbers are what decided it: the architecture track is what the Grammarian consumes, and it finds a third more domains at higher precision. Hen lysozyme went from a wrong call at 79% confidence to <strong>Lys at 97%</strong>, with Destabilase and Glyco_hydro_19 behind it. The cost is accepted deliberately: the Oracle no longer feels instant.</li>
+<li><span class="emd-check">&#9989;</span> <strong>Tightened the unknown-function rule.</strong> Matching the CC abstract as well as the summary flagged 949 characterised families, including the MurJ lipid II flippase and the ZIP zinc transporter. Matching the family's own summary plus Pfam's DUF and UPF prefixes gives 6,925.</li>
+<li><span class="emd-check">&#9989;</span> <strong>Conserved domain order stated in words.</strong> Every co-occurrence row read "100%", which looks like a bug and is not one: 97.7% of pairs sharing ten or more proteins have an invariant N-to-C order, so the invariant case says so and a percentage is kept for the 2.3% that vary.</li>
+<li><span class="emd-check">&#9989;</span> <strong>All five platforms building.</strong> visionOS needed the volumetric Galaxy rebuilt as batched per-clan meshes, since 30,031 entities would never reach frame rate, and a route to the volume, which a volumetric <code>WindowGroup</code> does not open on its own.</li>
+<li><span class="emd-check">&#9989;</span> <strong>Trimmed the database, 83 MB to 58 MB.</strong> The <code>signature</code> column and its unique index cost 16 MB to repeat what <code>architecture_member</code> already held, so it is derived in Swift now, and capping architectures at 10 per family dropped 70,751 rows from a tail the Grammarian never draws.</li>
+<li><span class="emd-check">&#9989;</span> <strong>Trimmed the matrices to int8.</strong> Free: top-1 0.7150 against 0.7149 at float16, an identical top hit for every description probe, and a worst round-trip cosine of 0.99990. The per-row scale is applied to the result rather than to every element, since the product of a row and the query is linear in the row.</li>
+<li><span class="emd-check">&#9989;</span> <strong>Adopted ESM-2 t12-35M.</strong> Measured first, then chosen: real-protein top-1 0.430 to 0.492, but the decider was multi-domain recall 0.358 to 0.478 at higher precision, because the architecture track is what the Grammarian consumes. Hen lysozyme went from a wrong call at 79% to Lys at 97%. The cost is deliberate: 31.3 ms per window against 6.0, so the Oracle no longer feels instant.</li>
+<li><span class="emd-check">&#9989;</span> <strong>Boundary refinement: tried, measured, rejected.</strong> Recorded so nobody retries it blind. Against InterPro's own locations for 220 multi-domain proteins, a second pass of narrow 48-residue tiles made boundaries clearly worse (IoU 0.44 to 0.19) because tiles that narrow cannot match a centroid built from ~120-residue domains, and per-residue vote segmentation lifted recall but nearly halved precision. The real limit is detection, not localisation.</li>
+<li><span class="emd-check">&#9989;</span> <strong>Bundle verification, negative-tested.</strong> Checks every model, matrix, database and the compiled icon against the sizes the manifest itself declares, and both it and the archive verifier are proven to fail on a deliberately damaged bundle.</li>
+<li><span class="emd-check">&#9989;</span> <strong>App icon drawn from the real map.</strong> The actual UMAP projection with real clan colours and the amber query comet, asserted RGB with no alpha because the App Store rejects an alpha channel and PIL hands you RGBA by default.</li>
+<li><span class="emd-check">&#9989;</span> <strong>visionOS immersive space.</strong> The volume is a box you lean into; the immersive space puts the map around you at room scale. Mixed immersion rather than full, because this is an instrument and seeing the desk is part of using one.</li>
+<li><span class="emd-check">&#9989;</span> <strong>Camera sequence scanning.</strong> VisionKit live text, where the OCR is the easy half: runs are built from the twenty standard residues only, so "PROTEIN" breaks at the O, and must sit under an English-bigram density of 0.17, a threshold measured from 300 real seed sequences peaking at 0.148 against prose starting at 0.200.</li>
+<li><span class="emd-check">&#9989;</span> <strong>Online verification against InterProScan 5.</strong> EBI's hmmscan endpoint is gone, and InterProScan is the authoritative answer PfamIE approximates rather than merely a second opinion. It is the only feature that leaves the device, so it asks first and says exactly what it will send.</li>
+<li><span class="emd-check">&#9989;</span> <strong>watchOS complication.</strong> Circular, corner, inline and rectangular, reading an App Group rather than <code>UserDefaults.standard</code>, because a widget extension has its own container and the standard store would be a different, always-empty one.</li>
+<li><span class="emd-check">&#9989;</span> <strong>App Store Connect tooling, run rather than written.</strong> Bundle identifiers, capabilities, provisioning profiles and certificates are all created over the API. Running it surfaced that Release was silently picking the Development certificate, and that Apple reserves "complication" in the App ID namespace, rejecting it at any depth while <code>.widget</code> is fine.</li>
+<li><span class="emd-check">&#9989;</span> <strong>Store listing complete.</strong> Categories, subtitle, description, keywords, privacy policy, age rating, a custom MIT licence agreement, free pricing in every territory, and 20 screenshots across iPhone, iPad, Vision Pro and Mac. See <a href="https://github.com/bellcheddar/PfamIE/blob/main/docs/TESTFLIGHT.md">docs/TESTFLIGHT.md</a>.</li>
+<li><span class="emd-check">&#9989;</span> <strong>macOS and visionOS builds uploaded.</strong> The icon comes from a build, so there is no listing icon until one is processed. macOS needed <code>LSApplicationCategoryType</code> in its Info.plist, and visionOS needed a layered <code>AppIcon.solidimagestack</code> rather than a flat PNG, ordered front to back with the opaque layer last.</li>
+<li><span class="emd-check">&#11036;</span> <strong>iOS build.</strong> Blocked on one Developer Portal step: the App Group the watch complication reads. The capability is enabled over the API but the group itself has no API, so it is created by hand once.</li>
+<li><span class="emd-check">&#11036;</span> <strong>Hand-tracked comet placement.</strong> Deferred deliberately rather than left unsaid: it needs ARKit hand tracking, which cannot be exercised in the simulator, so it would ship untested. Worth doing on real hardware.</li>
 </ul>
-<div class="emd-table-wrap"><table class="emd-data-table">
-<thead>
-<tr>
-<th></th>
-<th>t6-8M</th>
-<th><strong>t12-35M (shipped)</strong></th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td data-label="">Real-protein top-1</td>
-<td data-label="t6-8M">0.430</td>
-<td data-label="t12-35M (shipped)"><strong>0.492</strong></td>
-</tr>
-<tr>
-<td data-label="">Real-protein top-5</td>
-<td data-label="t6-8M">0.493</td>
-<td data-label="t12-35M (shipped)"><strong>0.553</strong></td>
-</tr>
-<tr>
-<td data-label="">Multi-domain recall</td>
-<td data-label="t6-8M">0.358</td>
-<td data-label="t12-35M (shipped)"><strong>0.478</strong></td>
-</tr>
-<tr>
-<td data-label="">Multi-domain precision</td>
-<td data-label="t6-8M">0.76</td>
-<td data-label="t12-35M (shipped)"><strong>0.84</strong></td>
-</tr>
-<tr>
-<td data-label="">Neural Engine, per window</td>
-<td data-label="t6-8M">6.0 ms</td>
-<td data-label="t12-35M (shipped)">31.3 ms</td>
-</tr>
-<tr>
-<td data-label="">Model in the bundle (8-bit)</td>
-<td data-label="t6-8M">16.5 MB</td>
-<td data-label="t12-35M (shipped)">34.4 MB</td>
-</tr>
-<tr>
-<td data-label="">536-residue protein, end to end</td>
-<td data-label="t6-8M">247 ms</td>
-<td data-label="t12-35M (shipped)">~1.2 s</td>
-</tr>
-</tbody>
-</table></div>
-<ul class="emd-tasklist">
-<li><span class="emd-check">&#9989;</span> <strong>Boundary refinement: tried, measured, rejected.</strong> Worth recording so nobody tries it again blind. The premise needed correcting twice. On single-domain proteins boundaries are already good (median error 6 and 7 residues, IoU 0.87), but that population flatters the scanner, because in a protein that is one domain end to end almost any call scores well. On multi-domain proteins, where boundaries actually matter, median error is 48 and 54 residues and IoU is 0.44.</li>
-</ul>
-<p>Two fixes were measured against InterPro's own Pfam locations for 220 multi-domain proteins. A second pass of narrow 48-residue tiles scored against the family already called made it clearly <strong>worse</strong> (IoU 0.44 to 0.19): tiles that narrow do not carry enough signal to match a centroid built from ~120-residue domains. Per-residue vote segmentation lifted recall (0.358 to 0.471) but nearly halved precision (0.76 to 0.41) by over-calling. Neither shipped.</p>
-<p>The real limit is detection, not localisation: the scanner never finds two thirds of the domains, and that is a model-capacity problem. t12-35M lifts recall to 0.478 at <em>higher</em> precision, which is where the gain actually is.
-- <span class="emd-check">&#9989;</span> <strong>visionOS immersive space.</strong> The volume is a box you lean into; the immersive space puts the map around you at room scale and lets you walk through it. Mixed immersion rather than full, because this is an instrument and seeing the desk is part of using one. Same batched per-clan meshes.
-- <span class="emd-check">&#11036;</span> <strong>Hand-tracked comet placement.</strong> Deferred deliberately rather than left unsaid: it needs ARKit hand tracking, which cannot be exercised in the simulator, so it would ship untested. Worth doing on real hardware.
-- <span class="emd-check">&#9989;</span> <strong>Camera sequence scanning.</strong> VisionKit live text, but the OCR is the easy half: the work is deciding which recognised text is a sequence, and that is tested without a camera. Whitespace is skipped rather than separating (printed sequences come in blocks of ten), runs are built from the twenty standard residues only (O and U are among the commonest letters in English and are not amino acids, so "PROTEIN" breaks at the O), and a run must sit under an English-bigram density of 0.17. Measured: 300 real Pfam seed sequences peak at 0.148, capitalised prose starts at 0.200.
-- <span class="emd-check">&#9989;</span> <strong>Online verification against InterProScan 5.</strong> EBI's hmmscan POST endpoint is gone (405) and the maintained route is InterProScan, which is also the authoritative answer PfamIE approximates rather than merely a second opinion. Result parsing filters to Pfam signatures, since a Gene3D superfamily would read as a disagreement that is not one, and is tested against a captured response rather than by queueing jobs on shared public infrastructure. The email is the user's own: it is their sequence and their job. This is the only feature that leaves the device, so it asks first and says what it will send.
-- <span class="emd-check">&#9989;</span> <strong>watchOS complication.</strong> Circular, corner, inline and rectangular, showing the last family the phone classified. It reads an App Group rather than <code>UserDefaults.standard</code>, because a widget extension has its own container and the standard store would be a different, always-empty one: the classic way a complication ships stuck on its placeholder.
-- <span class="emd-check">&#9989;</span> <strong>TestFlight tooling, tested rather than written.</strong> Bundle IDs, capabilities and five provisioning profiles are created and installed over the App Store Connect API; <code>archive.sh</code>, <code>verify-archive.sh</code> and <code>upload.sh</code> do the rest. A real macOS release archive has been produced, signed with <code>Apple Distribution: Marc Deller (SYNV8TWB5Z)</code> and verified complete. Writing the scripts was the easy half: running them surfaced that Release was silently picking the <em>Development</em> certificate, and that <strong>Apple reserves "complication" in the App ID namespace</strong>, rejecting it at any depth while <code>.widget</code> under the same parent is fine. See <a href="https://github.com/bellcheddar/PfamIE/blob/main/docs/TESTFLIGHT.md">docs/TESTFLIGHT.md</a>.
-- <span class="emd-check">&#11036;</span> <strong>Two one-off portal steps, then upload.</strong> Both need a human and are documented with the exact thing to click. The <strong>App Store Connect app record</strong>: Apple returns 403 on <code>POST /v1/apps</code>, and the store name is globally unique so it may be taken. The <strong>App Group</strong> <code>group.com.mdeller.pfamie</code>: the <code>APP_GROUPS</code> capability is already enabled over the API, but App Store Connect has no <code>/appGroups</code> resource, so the group itself is created in the Developer Portal. Only the watch complication needs it; the macOS archive works today.</p>
 <h2>🔬 Data sources and licences</h2>
 <p>PfamIE is <strong>MIT licensed</strong>. Every bundled component is MIT, Apache-2.0 or CC0, so nothing here carries a copyleft or non-commercial term. Full attribution is in <a href="https://github.com/bellcheddar/PfamIE/blob/main/THIRD-PARTY-NOTICES.md">THIRD-PARTY-NOTICES.md</a>.</p>
 <div class="emd-table-wrap"><table class="emd-data-table">

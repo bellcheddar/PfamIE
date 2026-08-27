@@ -61,7 +61,11 @@ sends a summary over WatchConnectivity.
 
 ## Apple
 
-Team `SYNV8TWB5Z`, bundle IDs `com.mdeller.pfamie*`. Settled, never ask.
+Team and bundle-ID convention are settled in the `marcs-vibe-coding` skill,
+never ask. The team is read from `APPLE_TEAM_ID` in the environment so no
+account identifier lives in this public repo:
+
+    set -a; source ~/.claude/skills/marcs-vibe-coding/credentials.env; set +a
 Release signs manually against `Apple Distribution`; Debug stays automatic.
 The App Store Connect app record is the one step the API cannot do.
 

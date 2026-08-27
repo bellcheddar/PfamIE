@@ -362,6 +362,28 @@ def upload_screenshots(auth: str, app: str) -> None:
                 }, auth=auth)
                 print(f"  {platform} {display_type}: uploaded {image.name}")
 
+            order_screenshots(auth, set_id)
+
+
+def order_screenshots(auth: str, set_id: str) -> None:
+    """
+    Tell the set what order its screenshots go in.
+
+    Uploading is not enough. Until the set's `appScreenshots` relationship is
+    PATCHed with an explicit ordering, App Store Connect renders the images
+    greyed out and refuses to let you click them, even though the API reports
+    every asset as COMPLETE with no errors and no warnings. Nothing in the
+    upload response hints at this.
+    """
+    shots = call("GET", f"/appScreenshotSets/{set_id}/appScreenshots", auth=auth)["data"]
+    if not shots:
+        return
+    ordered = sorted(shots, key=lambda s: s["attributes"].get("fileName") or "")
+    call("PATCH", f"/appScreenshotSets/{set_id}/relationships/appScreenshots", {
+        "data": [{"type": "appScreenshots", "id": s["id"]} for s in ordered]
+    }, auth=auth)
+    print(f"    ordered {len(ordered)} screenshots")
+
 
 EULA_TEXT = """\
 PfamIE is free and open-source software, licensed under the MIT Licence.
@@ -458,6 +480,20 @@ def attach_builds(auth: str, app: str) -> None:
         print(f"  {platform}: attached")
 
 
+def reorder_all_screenshots(auth: str, app: str) -> None:
+    """Re-apply the display order to every existing set."""
+    for version in versions(auth, app):
+        platform = version["attributes"]["platform"]
+        for loc in call("GET",
+                        f"/appStoreVersions/{version['id']}/appStoreVersionLocalizations",
+                        auth=auth)["data"]:
+            for st in call("GET",
+                           f"/appStoreVersionLocalizations/{loc['id']}/appScreenshotSets",
+                           auth=auth)["data"]:
+                print(f"  {platform} {st['attributes']['screenshotDisplayType']}:")
+                order_screenshots(auth, st["id"])
+
+
 def set_content_rights(auth: str, app: str) -> None:
     call("PATCH", f"/apps/{app}", {
         "data": {"type": "apps", "id": app,
@@ -483,6 +519,7 @@ if __name__ == "__main__":
         "screenshots": upload_screenshots,
         "eula": set_eula,
         "attach-builds": attach_builds,
+        "reorder": reorder_all_screenshots,
     }
     if command == "all":
         # Not attach-builds: a build still processing returns 409, and that is

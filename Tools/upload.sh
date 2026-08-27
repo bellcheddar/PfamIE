@@ -12,7 +12,7 @@ cd "$(dirname "$0")/.."
 ARCHIVE="${1:-build/archives/PfamIE-ios.xcarchive}"
 EXPORT_DIR="build/export"
 
-if [ -z "${ASC_KEY_ID:-}" ]; then
+if [ -z "${APPLE_TEAM_ID:-}" ] || [ -z "${ASC_KEY_ID:-}" ]; then
     echo "Credentials are not loaded. Run:" >&2
     echo "  set -a; source ~/.claude/skills/marcs-vibe-coding/credentials.env; set +a" >&2
     exit 1
@@ -39,7 +39,7 @@ cat > "$EXPORT_DIR/ExportOptions.plist" <<PLIST
 <plist version="1.0">
 <dict>
     <key>method</key><string>app-store-connect</string>
-    <key>teamID</key><string>SYNV8TWB5Z</string>
+    <key>teamID</key><string>$APPLE_TEAM_ID</string>
     <key>signingStyle</key><string>manual</string>
     <key>signingCertificate</key><string>Apple Distribution</string>
     <key>installerSigningCertificate</key><string>3rd Party Mac Developer Installer</string>

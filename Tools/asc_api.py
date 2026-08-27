@@ -30,7 +30,9 @@ from pathlib import Path
 import jwt
 
 BASE = "https://api.appstoreconnect.apple.com/v1"
-TEAM_ID = "SYNV8TWB5Z"
+
+# From the environment, so no account identifier lives in this public repo.
+TEAM_ID = os.environ.get("APPLE_TEAM_ID", "")
 
 # macOS deliberately shares com.mdeller.pfamie with iOS, so one universal app
 # record covers both. A separate .mac identifier would split them into two
@@ -50,6 +52,8 @@ def token() -> str:
     key_id = os.environ.get("ASC_KEY_ID")
     issuer = os.environ.get("ASC_ISSUER_ID")
     key_path = os.environ.get("ASC_KEY_PATH")
+    if not TEAM_ID:
+        sys.exit("APPLE_TEAM_ID is not set. Source your credentials file first.")
     if not (key_id and issuer and key_path):
         sys.exit(
             "ASC_KEY_ID, ASC_ISSUER_ID and ASC_KEY_PATH must be set. Run:\n"

@@ -12,5 +12,13 @@ if ! command -v xcodegen >/dev/null; then
     exit 1
 fi
 
+# project.yml reads DEVELOPMENT_TEAM from the environment so this repo carries
+# no account identifiers.
+if [ -z "${APPLE_TEAM_ID:-}" ]; then
+    echo "APPLE_TEAM_ID is not set. Run:" >&2
+    echo "  set -a; source ~/.claude/skills/marcs-vibe-coding/credentials.env; set +a" >&2
+    exit 1
+fi
+
 xcodegen generate --spec project.yml
 echo "Generated PfamIE.xcodeproj"
