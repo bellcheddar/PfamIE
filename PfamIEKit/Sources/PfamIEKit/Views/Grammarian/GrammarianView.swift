@@ -1,4 +1,11 @@
 import SwiftUI
+// The watch companion shares the engine, the models and the theme, but none of
+// the phone and desktop UI: it carries no assets and shows one glance view.
+// SwiftUI on watchOS also lacks TextEditor, fileImporter, textSelection,
+// segmented pickers and keyboard shortcuts, so compiling these views there
+// fails on about a dozen counts. Excluding them is the honest description of
+// the architecture as well as the fix, and it keeps the watch binary small.
+#if !os(watchOS)
 
 /// How domains are put together: what travels with what, in what order, and
 /// what else is built the same way.
@@ -270,3 +277,5 @@ struct CooccurrenceGraph: View {
         .accessibilityLabel("\(centre.displayName) co-occurs with \(shown.count) other families")
     }
 }
+
+#endif

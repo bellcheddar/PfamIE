@@ -1,4 +1,11 @@
 import SwiftUI
+// The watch companion shares the engine, the models and the theme, but none of
+// the phone and desktop UI: it carries no assets and shows one glance view.
+// SwiftUI on watchOS also lacks TextEditor, fileImporter, textSelection,
+// segmented pickers and keyboard shortcuts, so compiling these views there
+// fails on about a dozen counts. Excluding them is the honest description of
+// the architecture as well as the fix, and it keeps the watch binary small.
+#if !os(watchOS)
 
 /// The calibrated confidence, drawn as a ring and stated in words.
 ///
@@ -98,3 +105,5 @@ public struct CalibrationNote: View {
         }
     }
 }
+
+#endif
