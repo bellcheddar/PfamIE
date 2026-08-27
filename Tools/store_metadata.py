@@ -421,6 +421,43 @@ def set_eula(auth: str, app: str) -> None:
         print(f"  licence agreement set ({len(territories)} territories)")
 
 
+def attach_builds(auth: str, app: str) -> None:
+    """
+    Attach each processed build to its platform's version.
+
+    A build cannot be attached while Apple is still processing it: the PATCH
+    returns 409. Processing takes ten to thirty minutes, so this is a separate,
+    re-runnable step rather than part of the upload.
+    """
+    by_platform = {}
+    for build in call("GET", f"/apps/{app}/builds?limit=20", auth=auth)["data"]:
+        if build["attributes"].get("processingState") != "VALID":
+            continue
+        pre = call("GET", f"/builds/{build['id']}/preReleaseVersion",
+                   auth=auth).get("data") or {}
+        platform = (pre.get("attributes") or {}).get("platform")
+        if platform:
+            by_platform.setdefault(platform, build["id"])
+
+    for version in versions(auth, app):
+        platform = version["attributes"]["platform"]
+        current = call("GET", f"/appStoreVersions/{version['id']}/build",
+                       auth=auth).get("data")
+        if current:
+            print(f"  {platform}: already attached")
+            continue
+        build_id = by_platform.get(platform)
+        if not build_id:
+            print(f"  {platform}: no processed build yet")
+            continue
+        call("PATCH", f"/appStoreVersions/{version['id']}", {
+            "data": {"type": "appStoreVersions", "id": version["id"],
+                     "relationships": {"build": {"data": {"type": "builds",
+                                                          "id": build_id}}}}
+        }, auth=auth)
+        print(f"  {platform}: attached")
+
+
 def set_content_rights(auth: str, app: str) -> None:
     call("PATCH", f"/apps/{app}", {
         "data": {"type": "apps", "id": app,
@@ -445,8 +482,14 @@ if __name__ == "__main__":
         "rights": set_content_rights,
         "screenshots": upload_screenshots,
         "eula": set_eula,
+        "attach-builds": attach_builds,
     }
-    chosen = steps if command == "all" else {command: steps[command]}
+    if command == "all":
+        # Not attach-builds: a build still processing returns 409, and that is
+        # a normal state rather than a failure worth printing on every run.
+        chosen = {k: v for k, v in steps.items() if k != "attach-builds"}
+    else:
+        chosen = {command: steps[command]}
     for name, fn in chosen.items():
         try:
             fn(auth, app)
