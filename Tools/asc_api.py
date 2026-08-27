@@ -252,36 +252,59 @@ def install_profiles() -> None:
         print(f"  installed  {attributes['name']}  -> {path.name}")
 
 
-def app_group_ready() -> bool:
+def app_group_ready(group: str = "group.com.mdeller.pfamie") -> bool:
     """
-    True once the App Group is assigned to every bundle id that needs it.
+    True once the App Group is actually assigned to the bundle ids that need it.
 
-    App Groups have no API resource, so they cannot be created here, but the
-    assignment IS visible: the APP_GROUPS capability on a bundle id carries a
-    null `settings` until a group is attached to it. That makes it possible to
-    wait for the manual step and carry on automatically, rather than asking
-    someone to come back and say when they are done.
+    Checked by minting a throwaway provisioning profile and decoding it, which
+    is the only thing that tells the truth. The obvious check does not work:
+    the `APP_GROUPS` capability's `settings` field reads null whether or not a
+    group is attached. It reads null for an identifier whose freshly generated
+    profile plainly carries two groups, so a detector built on it waits for
+    ever. Entitlements in a profile are ground truth; capability metadata is
+    not.
     """
+    import base64
+    import subprocess
+    import tempfile
+
     auth = token()
     ids = existing_bundle_ids(auth)
+    certificate = distribution_certificate(auth)
     ready = True
+
     for identifier in APP_GROUP_BUNDLE_IDS:
         bundle = ids.get(identifier)
         if not bundle:
             print(f"  {identifier}: not registered")
             ready = False
             continue
-        caps = call("GET", f"/bundleIds/{bundle}/bundleIdCapabilities",
-                    auth=auth).get("data", [])
-        groups = next((c for c in caps
-                       if (c.get("attributes") or {}).get("capabilityType") == "APP_GROUPS"),
-                      None)
-        settings = (groups or {}).get("attributes", {}).get("settings")
-        if settings:
-            print(f"  {identifier}: group assigned")
-        else:
-            print(f"  {identifier}: APP_GROUPS enabled but no group assigned yet")
-            ready = False
+
+        created = call("POST", "/profiles", {
+            "data": {
+                "type": "profiles",
+                "attributes": {"name": f"probe-{identifier}", "profileType": "IOS_APP_STORE"},
+                "relationships": {
+                    "bundleId": {"data": {"type": "bundleIds", "id": bundle}},
+                    "certificates": {"data": [{"type": "certificates", "id": certificate}]},
+                },
+            }
+        }, auth=auth)
+        try:
+            content = base64.b64decode(created["data"]["attributes"]["profileContent"])
+            with tempfile.NamedTemporaryFile(suffix=".mobileprovision") as handle:
+                handle.write(content)
+                handle.flush()
+                xml = subprocess.run(["security", "cms", "-D", "-i", handle.name],
+                                     capture_output=True).stdout.decode("utf-8", "replace")
+            if group in xml:
+                print(f"  {identifier}: {group} assigned")
+            else:
+                print(f"  {identifier}: {group} NOT assigned")
+                ready = False
+        finally:
+            call("DELETE", f"/profiles/{created['data']['id']}", auth=auth)
+
     return ready
 
 
