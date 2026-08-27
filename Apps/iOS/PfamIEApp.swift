@@ -13,15 +13,9 @@ struct PfamIEApp: App {
             if let assets = BundledAssets.assets() {
                 RootView(assets: assets)
                     .environment(app)
+                    .task { WatchBridge.shared.activate() }
             } else {
                 MissingAssetsView()
-            }
-        }
-        .commands {
-            // iPad hardware keyboards get the same shortcuts as the Mac.
-            CommandGroup(after: .toolbar) {
-                Button("Galaxy") { }.keyboardShortcut("1", modifiers: .command)
-                Button("Oracle") { }.keyboardShortcut("2", modifiers: .command)
             }
         }
     }

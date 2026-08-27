@@ -1,0 +1,350 @@
+<h1>🧬 PfamIE</h1>
+<blockquote>
+<p><strong>The entire Pfam universe as an on-device inference engine: paste a sequence, get a family, offline.</strong></p>
+</blockquote>
+<p><img alt="swift" src="https://img.shields.io/badge/swift-6.3-F05138?logo=swift&amp;logoColor=white"> <img alt="platforms" src="https://img.shields.io/badge/platforms-iOS%20%C2%B7%20iPadOS%20%C2%B7%20macOS%20%C2%B7%20visionOS%20%C2%B7%20watchOS-000000?logo=apple&amp;logoColor=white"> <img alt="xcode" src="https://img.shields.io/badge/xcode-26.6-1575F9?logo=xcode&amp;logoColor=white"> <img alt="coreml" src="https://img.shields.io/badge/Core%20ML-Neural%20Engine-0A84FF?logo=apple&amp;logoColor=white"> <img alt="esm2" src="https://img.shields.io/badge/ESM--2-t6%208M-5EEAD4"> <img alt="minilm" src="https://img.shields.io/badge/MiniLM-L6--v2-A78BFA"> <img alt="accelerate" src="https://img.shields.io/badge/Accelerate-vDSP%20%C2%B7%20BLAS-FB923C"> <img alt="molstar" src="https://img.shields.io/badge/Mol*-4.9.0-4C6EF5"> <img alt="sqlite" src="https://img.shields.io/badge/SQLite-FTS5-003B57?logo=sqlite&amp;logoColor=white"> <img alt="python" src="https://img.shields.io/badge/python-3.12.13-3776AB?logo=python&amp;logoColor=white"> <img alt="torch" src="https://img.shields.io/badge/pytorch-2.13.0-EE4C2C?logo=pytorch&amp;logoColor=white"> <img alt="transformers" src="https://img.shields.io/badge/transformers-5.16.1-FFD21E?logo=huggingface&amp;logoColor=black"> <img alt="coremltools" src="https://img.shields.io/badge/coremltools-9.0-555555"> <img alt="umap" src="https://img.shields.io/badge/umap--learn-0.5.12-9b51e0"> <img alt="tests" src="https://img.shields.io/badge/tests-17%20passing-00897B"> <img alt="data" src="https://img.shields.io/badge/data-Pfam%2038.2%20%C2%B7%20InterPro%20%C2%B7%20UniProt%20%C2%B7%20AlphaFold-467FF7"> <img alt="offline" src="https://img.shields.io/badge/classification-100%25%20offline-00d084"> <img alt="phase" src="https://img.shields.io/badge/phase-1.0%20build%20complete-fcb900"> <img alt="licence" src="https://img.shields.io/badge/licence-see%20below-lightgrey"> <img alt="author" src="https://img.shields.io/badge/author-Marc%20C.%20Deller%2C%20D.Phil.-1C244B"></p>
+<table class="emd-info-table">
+<tr>
+<td>🌐 <b>Website</b></td><td><a href="https://marcdeller.com" target="_blank" rel="noopener noreferrer">marcdeller.com</a></td>
+<td>✉️ <b>Contact</b></td><td><a href="mailto:marc@marcdeller.com">marc@marcdeller.com</a></td>
+<td>🐙 <b>GitHub</b></td><td><a href="https://github.com/bellcheddar/PfamIE" target="_blank" rel="noopener noreferrer">bellcheddar/PfamIE</a></td>
+</tr>
+</table>
+
+<hr>
+<p>PfamIE turns all 30,031 Pfam families into an inference engine that fits in your pocket. A quantised ESM-2 protein language model runs on the Apple Neural Engine, embeds any sequence you paste, and classifies it against a pre-baked matrix of family centroid embeddings: family assignment with no HMM, no server, and no network. Around that core sit five views: a 3D flythrough map of the whole Pfam universe, a sequence oracle with a calibrated confidence, a domain-architecture explorer, a browser for the dark proteome, and an offline atlas you can search in plain English.</p>
+<p><strong>Why it matters:</strong> every existing route to a Pfam assignment goes through a server. HMMER against Pfam-A means a web queue or a local install and a 1.5 GB HMM library, and neither works on a train, in a hospital, at a conference, or anywhere the sequence in front of you is not yours to upload. PfamIE puts the whole search space on the device, answers in a second and a half, and tells you honestly how often it is wrong. It is useful for anyone who wants a first-pass family call, a domain architecture, or a functional lead for an uncharacterised protein: bench scientists triaging a hit, structural biologists sizing up a construct, and teachers who want the shape of protein sequence space on a screen they can spin.</p>
+<hr>
+<h2>✨ What it does</h2>
+<div class="emd-table-wrap"><table class="emd-data-table">
+<thead>
+<tr>
+<th>Tab</th>
+<th>What it is for</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td data-label="Tab"><strong>Galaxy</strong></td>
+<td data-label="What it is for">All 30,031 families as a 3D point cloud, clans as coloured regions, the dark proteome drawn dim. Tap a star, open its card, or watch your last query drop in as an amber comet.</td>
+</tr>
+<tr>
+<td data-label="Tab"><strong>Oracle</strong></td>
+<td data-label="What it is for">Paste a sequence or open a FASTA. Multi-scale window scanning returns the family, the clan, the N-to-C domain architecture, and a confidence that has been calibrated against real proteins.</td>
+</tr>
+<tr>
+<td data-label="Tab"><strong>Grammarian</strong></td>
+<td data-label="What it is for">Which domains travel with which, in what order, and how often: co-occurrence graphs over 199,143 real architectures, and "what else is built like mine?"</td>
+</tr>
+<tr>
+<td data-label="Tab"><strong>Prospector</strong></td>
+<td data-label="What it is for">The 7,874 families with no known function, each with its nearest annotated neighbours as an explicitly hypothesis-flavoured lead.</td>
+</tr>
+<tr>
+<td data-label="Tab"><strong>Field Guide</strong></td>
+<td data-label="What it is for">The offline Pfam atlas. "breaks down plastic" and "haem-binding families that dimerise" both work, with no network, through a bundled MiniLM.</td>
+</tr>
+</tbody>
+</table></div>
+<p>Every family reference anywhere in the app carries the same four actions (<strong>Open card · Show in Galaxy · Similar architectures · View structure</strong>), so no tab is a dead end. Any family can open an AlphaFold model with its Pfam domain highlighted: AlphaFold uses UniProt numbering, so Pfam boundaries map onto the structure with no residue-mapping step.</p>
+<h2>📊 How well it works</h2>
+<p>This is the part most tools leave out, so it goes near the top.</p>
+<p>Measured on <strong>2,500 real single-domain UniProt proteins</strong>, ranked against all 30,031 families, with thresholds fitted on 1,875 and every accuracy below reported on the 625 held back:</p>
+<div class="emd-table-wrap"><table class="emd-data-table">
+<thead>
+<tr>
+<th>Confidence band</th>
+<th>Share of queries</th>
+<th>Correct</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td data-label="Confidence band"><strong>High</strong> (p ≥ 0.75)</td>
+<td data-label="Share of queries">22.7%</td>
+<td data-label="Correct"><strong>94.4%</strong></td>
+</tr>
+<tr>
+<td data-label="Confidence band"><strong>Moderate</strong> (p ≥ 0.45)</td>
+<td data-label="Share of queries">19.7%</td>
+<td data-label="Correct">55.3%</td>
+</tr>
+<tr>
+<td data-label="Confidence band"><strong>Low</strong> (p ≥ 0.25)</td>
+<td data-label="Share of queries">25.9%</td>
+<td data-label="Correct">30.9%</td>
+</tr>
+<tr>
+<td data-label="Confidence band"><strong>No confident family</strong> (p &lt; 0.25)</td>
+<td data-label="Share of queries">31.7%</td>
+<td data-label="Correct">9.6%</td>
+</tr>
+</tbody>
+</table></div>
+<p>Overall top-1 is 0.43, top-5 0.49 and top-20 0.55. The app abstains on roughly a third of queries rather than naming the least-bad of 30,031 options.</p>
+<p><strong>Why the headline number is not 0.72.</strong> Held-out Pfam seed sequences score 0.72 top-1 on exactly the same pipeline, and that is the number this README could have quoted. It would have been misleading: seed sequences are trimmed to domain boundaries and drawn from the very alignments the centroids were built from, so they measure the index against its own kind. Real proteins carry signal peptides, linkers, disordered tails and other domains. Calibrated on seeds, an all-alanine nonsense sequence came back at 0.51 confidence; calibrated on real proteins it comes back at 0.28. Both figures are in Settings, labelled.</p>
+<p><strong>Scanning strategy, measured on 400 real proteins:</strong></p>
+<div class="emd-table-wrap"><table class="emd-data-table">
+<thead>
+<tr>
+<th>Approach</th>
+<th>Top-1</th>
+<th>Top-5</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td data-label="Approach">Whole sequence embedded end to end</td>
+<td data-label="Top-1">0.285</td>
+<td data-label="Top-5">0.435</td>
+</tr>
+<tr>
+<td data-label="Approach">One 160-residue sliding window</td>
+<td data-label="Top-1">0.425</td>
+<td data-label="Top-5">0.548</td>
+</tr>
+<tr>
+<td data-label="Approach">Four widths: 96 / 160 / 256 / 384</td>
+<td data-label="Top-1"><strong>0.535</strong></td>
+<td data-label="Top-5"><strong>0.635</strong></td>
+</tr>
+</tbody>
+</table></div>
+<p>No single window width fits Pfam, whose domains run from about 30 residues to several hundred. Multi-scale costs inference time and nothing in bundle size.</p>
+<h2>🧱 How it is built</h2>
+<pre><code class="language-text">PfamIE/
+├── forge/                Python: builds every asset the app ships (Phase 0)
+├── PfamIEKit/            SwiftPM package: engine, data, and all shared views
+│   └── Sources/PfamIEKit/
+│       ├── Engine/       tokenisers, Core ML embedders, centroid index, domain scanner
+│       ├── Data/         SQLite store, AlphaFold client, models
+│       ├── Core/         engine facade, router, theme, app environment
+│       └── Views/        Galaxy, Oracle, Grammarian, Prospector, Field Guide, Structure
+├── Apps/                 thin per-platform targets
+│   ├── iOS/              iPhone tabs and iPad three-column, one target
+│   ├── macOS/            native SwiftUI, sidebar, menu commands, FASTA on the dock icon
+│   ├── visionOS/         volumetric Galaxy plus windowed tabs
+│   └── watchOS/          companion glance over WatchConnectivity
+├── Tools/                project generation and bundle verification
+└── project.yml           XcodeGen spec: the .xcodeproj is derived, never hand-edited
+</code></pre>
+<p>All five platforms share one engine. <code>PfamIEKit</code> imports no UIKit or AppKit anywhere except the two files behind the structure viewer, which need a web view and say so.</p>
+<div class="emd-table-wrap"><table class="emd-data-table">
+<thead>
+<tr>
+<th>Component</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td data-label="Component"><code>ProteinEmbedder</code></td>
+<td data-label="Notes">ESM-2 t6-8M as Core ML, fixed 512 tokens, Neural Engine eligible. Pooling, whitening and normalisation are all graph operations, so the output is a finished unit vector and Swift never indexes a 2-D <code>MLMultiArray</code>.</td>
+</tr>
+<tr>
+<td data-label="Component"><code>Float16Matrix</code></td>
+<td data-label="Notes">Memory-mapped float16 matrices with a chunked Accelerate <code>sgemv</code>. Top-20 over 30,031 families in <strong>1.5 ms</strong>.</td>
+</tr>
+<tr>
+<td data-label="Component"><code>DomainScanner</code></td>
+<td data-label="Notes">Multi-scale windows, per-scale merging, then greedy non-overlapping selection by confidence.</td>
+</tr>
+<tr>
+<td data-label="Component"><code>SemanticSearch</code></td>
+<td data-label="Notes">MiniLM-L6-v2 as Core ML plus a Swift WordPiece tokeniser, over 30,031 description embeddings.</td>
+</tr>
+<tr>
+<td data-label="Component"><code>PfamStore</code></td>
+<td data-label="Notes">Raw sqlite3, no wrapper library. FTS5 for literal search, running alongside the semantic search rather than instead of it.</td>
+</tr>
+<tr>
+<td data-label="Component"><code>Router</code></td>
+<td data-label="Notes">One closed <code>Destination</code> enum. Every context menu, every deep link and every card action resolves to a case of it.</td>
+</tr>
+</tbody>
+</table></div>
+<h2>⚗️ The forge (Phase 0)</h2>
+<p><code>forge/</code> builds everything the app ships, from the Pfam 38.2 release flatfiles and the InterPro API. Run it before building the app.</p>
+<pre><code class="language-bash">python3.12 -m venv .venv
+.venv/bin/pip install -r forge/requirements.txt
+
+# Pfam release flatfiles (about 54 MB)
+mkdir -p assets/raw &amp;&amp; cd assets/raw
+for f in Pfam-A.clans.tsv.gz Pfam-C.gz Pfam-A.hmm.dat.gz Pfam-A.seed.gz; do
+  curl -sLO &quot;https://ftp.ebi.ac.uk/pub/databases/Pfam/current_release/$f&quot;
+done
+cd ../..
+
+.venv/bin/python forge/stage_metadata.py        # families, clans, representative sequences
+.venv/bin/python forge/stage_interpro.py ida    # domain architectures (about 100 min)
+.venv/bin/python forge/stage_interpro.py counters
+.venv/bin/python forge/stage_embed.py           # ESM-2 over 368,451 sequences
+.venv/bin/python forge/stage_transform.py       # whitening and seed calibration
+.venv/bin/python forge/stage_project.py         # 3D UMAP for the Galaxy
+.venv/bin/python forge/stage_descemb.py         # MiniLM over every abstract
+.venv/bin/python forge/stage_coreml.py          # Core ML conversion and parity checks
+.venv/bin/python forge/stage_calibrate_real.py  # confidence, fitted on real proteins
+.venv/bin/python forge/stage_sqlite.py
+.venv/bin/python forge/stage_emit.py
+</code></pre>
+<div class="emd-table-wrap"><table class="emd-data-table">
+<thead>
+<tr>
+<th>Stage</th>
+<th>Produces</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td data-label="Stage"><code>stage_metadata</code></td>
+<td data-label="Produces">30,031 families, 891 clans, 7,874 DUFs, a UniProt structural representative for every family</td>
+</tr>
+<tr>
+<td data-label="Stage"><code>stage_interpro</code></td>
+<td data-label="Produces">199,143 distinct N-to-C architectures and 208,401 co-occurrence edges</td>
+</tr>
+<tr>
+<td data-label="Stage"><code>stage_embed</code></td>
+<td data-label="Produces">368,451 ESM-2 embeddings, 16 stratified seed sequences per family centroid</td>
+</tr>
+<tr>
+<td data-label="Stage"><code>stage_transform</code></td>
+<td data-label="Produces">The 320 × 320 whitening transform, and the seed-based reference calibration</td>
+</tr>
+<tr>
+<td data-label="Stage"><code>stage_coreml</code></td>
+<td data-label="Produces">Two <code>.mlpackage</code> models, with parity asserted on the Neural Engine and end to end against the index</td>
+</tr>
+<tr>
+<td data-label="Stage"><code>stage_calibrate_real</code></td>
+<td data-label="Produces">The shipped temperature and confidence bands</td>
+</tr>
+<tr>
+<td data-label="Stage"><code>stage_emit</code></td>
+<td data-label="Produces"><code>centroids.bin</code>, <code>umap3d.bin</code>, <code>desc_emb.bin</code>, <code>manifest.json</code></td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Two findings the forge exists to prevent from recurring</strong>, both recorded in the code that catches them:</p>
+<ul>
+<li><strong>Anisotropy.</strong> Mean-pooled ESM-2 embeddings put every family at cosine ~0.97 to every other, and short families collapse into a single hub. Whitening the centroid covariance lifts held-out top-1 from 0.514 to 0.715 and pulls the mean nearest-neighbour cosine from 0.968 to 0.677. Without it, the Galaxy is a featureless ball and the Oracle is a coin toss.</li>
+<li><strong>Parity is not correctness.</strong> The Core ML model whitened the un-normalised pooled vector while <code>mu</code> and <code>W</code> had been fitted on unit-length ones. Torch and Core ML agreed to a cosine of 0.99999 the entire time, because both were running the same wrong recipe, and lysozyme classified as a coiled coil. The forge now embeds held-out sequences through the <em>converted</em> model and looks them up in the <em>shipped</em> index, which is the check that catches it.</li>
+</ul>
+<h2>🔧 Building the app</h2>
+<pre><code class="language-bash">brew install xcodegen
+./Tools/generate-project.sh                 # regenerates PfamIE.xcodeproj from project.yml
+open PfamIE.xcodeproj
+
+# Or from the command line:
+xcodebuild -project PfamIE.xcodeproj -scheme PfamIE-macOS -destination 'platform=macOS' build
+swift test -c release --package-path PfamIEKit
+</code></pre>
+<p>Tests need the forge output. Without it the asset-dependent suites skip rather than fail, so a fresh clone still runs green.</p>
+<p><strong>Always verify a built bundle before shipping it.</strong> <code>BUILD SUCCEEDED</code> says nothing about the contents, and an app missing its Core ML models builds and signs perfectly:</p>
+<pre><code class="language-bash">./Tools/verify-bundle.sh ~/Library/Developer/Xcode/DerivedData/PfamIE-*/Build/Products/Debug/PfamIE.app
+</code></pre>
+<p>The script is negative-tested: strip a model from a copy of the bundle and it must exit 1.</p>
+<h2>📋 Requirements</h2>
+<div class="emd-table-wrap"><table class="emd-data-table">
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td data-label="">Xcode</td>
+<td data-label="">26.6 or later</td>
+</tr>
+<tr>
+<td data-label="">Deployment</td>
+<td data-label="">iOS 18, macOS 15, visionOS 2, watchOS 11</td>
+</tr>
+<tr>
+<td data-label="">Forge</td>
+<td data-label="">Python 3.12 (numba and coremltools are not yet reliable on 3.14)</td>
+</tr>
+<tr>
+<td data-label="">Bundle</td>
+<td data-label="">About 170 MB: 83 MB database, 40 MB matrices, 39 MB models, 5 MB Mol*</td>
+</tr>
+<tr>
+<td data-label="">Network</td>
+<td data-label="">Only for AlphaFold structures. Classification, architecture and search are entirely offline.</td>
+</tr>
+</tbody>
+</table></div>
+<h2>✅ To Do</h2>
+<p>Roadmap for PfamIE, in dependency order. Suggestions welcome.</p>
+<ul class="emd-tasklist">
+<li><span class="emd-check">&#9989;</span> <strong>Phase 0: the data forge.</strong> Reads the Pfam 38.2 flatfiles offline rather than making 30,031 API calls, so all metadata, clans, abstracts and representative sequences come from one 52 MB download. Only architectures and family sizes need InterPro.</li>
+<li><span class="emd-check">&#9989;</span> <strong>Whitening the centroid space.</strong> Measured, not assumed: held-out top-1 0.514 → 0.715, and the nearest-neighbour cosine 0.968 → 0.677. A shrinkage sweep found the plateau at eps 1e-5, which also caps eigen-amplification at a conservative 34×.</li>
+<li><span class="emd-check">&#9989;</span> <strong>Stratified centroid sequences.</strong> Choosing the sequences closest to the median seed length looked sensible and selected near-duplicates: PF00062 got six α-lactalbumins out of eight and could not recognise hen lysozyme. An even sweep across the alignment costs nothing and spans the family; lysozyme went from rank 42 to rank 2.</li>
+<li><span class="emd-check">&#9989;</span> <strong>Core ML conversion with parity asserted on the Neural Engine.</strong> The whitened vector's sum of squares overflows float16 in the norm reduction, so the ANE returned all zeros while the CPU path looked perfect. Scaling <code>W</code> is free because the output is L2 normalised. Parity is now checked on <code>ComputeUnit.ALL</code>, and the stage fails rather than shipping a silent zero.</li>
+<li><span class="emd-check">&#9989;</span> <strong>Phase 1: engine.</strong> Memory-mapped float16 matrices, chunked Accelerate gemv at 1.5 ms per query, raw sqlite3 store, Swift ESM-2 and WordPiece tokenisers.</li>
+<li><span class="emd-check">&#9989;</span> <strong>Multi-scale domain scanning.</strong> Whole-sequence embedding turned out to be the <em>weakest</em> signal on real proteins (0.285 top-1). Four window widths give 0.535 at no bundle cost.</li>
+<li><span class="emd-check">&#9989;</span> <strong>Confidence calibrated on real proteins.</strong> Not on held-out seed sequences, which overstate accuracy by about 30 points. A test fails the build if the shipped calibration ever matches the seed-fitted one.</li>
+<li><span class="emd-check">&#9989;</span> <strong>Phase 2 and 3: five tabs.</strong> Galaxy, Oracle, Grammarian, Prospector, Field Guide, plus the universal family card and the closed-enum router.</li>
+<li><span class="emd-check">&#9989;</span> <strong>Structure layer.</strong> Bundled Mol*, AlphaFold mmCIF with disk caching, domain highlighting in UniProt numbering, and a quiet offline note rather than a spinner that never resolves.</li>
+<li><span class="emd-check">&#9989;</span> <strong>Bundle verification, negative-tested.</strong> <code>Tools/verify-bundle.sh</code> checks every model, matrix and database, and is proven to fail when one is removed.</li>
+<li><span class="emd-check">&#11036;</span> <strong>visionOS and watchOS build verification.</strong> Both targets are written and the SDKs are present, but the platform components are still downloading, so neither has been compiled yet. Nothing else is blocking them.</li>
+<li><span class="emd-check">&#11036;</span> <strong>App icon.</strong> Placeholder only. Note that the App Store rejects an icon with an alpha channel, and PIL hands you RGBA by default.</li>
+<li><span class="emd-check">&#11036;</span> <strong>Trim the bundle.</strong> 170 MB against a 60 MB target. int8 per-row quantisation of the centroids is free (top-1 0.7150 against 0.7149 at float16) and halves them to 9.6 MB; the same for the description embeddings saves 11.5 MB. The 83 MB database is the real target: capping architectures per family is the lever.</li>
+<li><span class="emd-check">&#11036;</span> <strong>A larger protein model.</strong> ESM-2 t6-8M is 8 million parameters, and 0.43 top-1 on real proteins is its honest ceiling. t12-35M is the obvious next step, at roughly +35 MB palettised, and should be measured on the same real-protein benchmark rather than on held-out seeds.</li>
+<li><span class="emd-check">&#11036;</span> <strong>Boundary refinement.</strong> Domain calls are resolved to about a third of a window width. A second pass at finer stride around each accepted boundary would sharpen the architecture track.</li>
+<li><span class="emd-check">&#11036;</span> <strong>VisionKit sequence scanning.</strong> Read a printed sequence with the camera. First on the cut list and duly cut.</li>
+<li><span class="emd-check">&#11036;</span> <strong>HMMER verification.</strong> An optional, clearly labelled network path to check a call against the real thing at EBI.</li>
+<li><span class="emd-check">&#11036;</span> <strong>watchOS complication.</strong> The synced glance view is built; the complication is not.</li>
+<li><span class="emd-check">&#11036;</span> <strong>Licence.</strong> Add your licence here.</li>
+</ul>
+<h2>🔬 Data sources</h2>
+<div class="emd-table-wrap"><table class="emd-data-table">
+<thead>
+<tr>
+<th>Source</th>
+<th>Used for</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td data-label="Source"><a href="https://ftp.ebi.ac.uk/pub/databases/Pfam/current_release/">Pfam 38.2</a></td>
+<td data-label="Used for">Family metadata, clans, abstracts, seed alignments</td>
+</tr>
+<tr>
+<td data-label="Source"><a href="https://www.ebi.ac.uk/interpro/">InterPro API</a></td>
+<td data-label="Used for">Domain architectures, family sizes, taxonomic breadth</td>
+</tr>
+<tr>
+<td data-label="Source"><a href="https://www.uniprot.org/">UniProt</a></td>
+<td data-label="Used for">Benchmark and calibration sequences</td>
+</tr>
+<tr>
+<td data-label="Source"><a href="https://alphafold.ebi.ac.uk/">AlphaFold DB</a></td>
+<td data-label="Used for">Predicted structures, fetched on demand and cached</td>
+</tr>
+<tr>
+<td data-label="Source"><a href="https://huggingface.co/facebook/esm2_t6_8M_UR50D">ESM-2</a></td>
+<td data-label="Used for">Protein sequence embeddings</td>
+</tr>
+<tr>
+<td data-label="Source"><a href="https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2">MiniLM-L6-v2</a></td>
+<td data-label="Used for">Description embeddings for offline semantic search</td>
+</tr>
+<tr>
+<td data-label="Source"><a href="https://molstar.org/">Mol*</a></td>
+<td data-label="Used for">Structure rendering</td>
+</tr>
+</tbody>
+</table></div>
+<hr>
+<h2>👤 Author</h2>
+<p><strong>Marc C. Deller, D.Phil.</strong><br>
+Structural biologist &amp; drug discovery scientist  </p>
+<table class="emd-info-table">
+<tr>
+<td>🌐</td><td><a href="https://marcdeller.com" target="_blank" rel="noopener noreferrer">marcdeller.com</a></td>
+<td>✉️</td><td><a href="mailto:marc@marcdeller.com">marc@marcdeller.com</a></td>
+<td>🐙</td><td><a href="https://github.com/bellcheddar/PfamIE" target="_blank" rel="noopener noreferrer">github.com/bellcheddar/PfamIE</a></td>
+</tr>
+</table>

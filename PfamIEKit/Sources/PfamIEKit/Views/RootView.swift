@@ -15,6 +15,7 @@ public struct RootView: View {
 
     @State private var router = Router()
     @State private var structureCache = StructureCache()
+    @State private var showingSettings = false
 
     private let assets: PfamIEEngine.Assets
 
@@ -65,20 +66,44 @@ public struct RootView: View {
                 .environment(\.theme, theme)
                 .preferredColorScheme(app.appearance.preferredColorScheme)
         }
+        .sheet(isPresented: $showingSettings) {
+            SettingsSheet()
+                .environment(app)
+                .environment(structureCache)
+                .environment(\.theme, theme)
+                .preferredColorScheme(app.appearance.preferredColorScheme)
+        }
+        // Hardware keyboards on iPad and Mac get the same shortcuts. These live
+        // on the root rather than per tab, so they work wherever focus is.
+        .background {
+            VStack {
+                ForEach(AppTab.allCases) { tab in
+                    Button("") { router.selectedTab = tab }
+                        .keyboardShortcut(
+                            KeyEquivalent(Character("\(tab.rawValue + 1)")),
+                            modifiers: .command
+                        )
+                }
+                Button("") { showingSettings = true }
+                    .keyboardShortcut(",", modifiers: .command)
+            }
+            .opacity(0)
+            .accessibilityHidden(true)
+        }
     }
 
     @ViewBuilder
     private var shell: some View {
         #if os(macOS)
-        SidebarShell(router: $router)
+        SidebarShell(router: $router, showingSettings: $showingSettings)
         #elseif os(iOS) || os(visionOS)
         if sizeClass == .regular {
-            SidebarShell(router: $router)
+            SidebarShell(router: $router, showingSettings: $showingSettings)
         } else {
-            TabShell(router: $router)
+            TabShell(router: $router, showingSettings: $showingSettings)
         }
         #else
-        TabShell(router: $router)
+        TabShell(router: $router, showingSettings: $showingSettings)
         #endif
     }
 }
@@ -86,12 +111,22 @@ public struct RootView: View {
 /// iPhone and any compact width: five tabs along the bottom.
 struct TabShell: View {
     @Binding var router: Router
+    @Binding var showingSettings: Bool
 
     var body: some View {
         TabView(selection: $router.selectedTab) {
             ForEach(AppTab.allCases) { tab in
                 Tab(tab.title, systemImage: tab.symbol, value: tab) {
-                    NavigationStack { destination(tab) }
+                    NavigationStack {
+                        destination(tab)
+                            .toolbar {
+                                ToolbarItem(placement: .primaryAction) {
+                                    Button("Settings", systemImage: "gearshape") {
+                                        showingSettings = true
+                                    }
+                                }
+                            }
+                    }
                 }
             }
         }
@@ -113,6 +148,7 @@ struct TabShell: View {
 struct SidebarShell: View {
     @Environment(\.theme) private var theme
     @Binding var router: Router
+    @Binding var showingSettings: Bool
 
     var body: some View {
         NavigationSplitView {
@@ -135,6 +171,13 @@ struct SidebarShell: View {
             }
             .navigationTitle("PfamIE")
             .navigationSplitViewColumnWidth(min: 210, ideal: 240, max: 300)
+            .safeAreaInset(edge: .bottom) {
+                Button("Settings", systemImage: "gearshape") { showingSettings = true }
+                    .buttonStyle(.plain)
+                    .font(.footnote)
+                    .padding(12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
         } detail: {
             NavigationStack {
                 switch router.selectedTab {

@@ -316,6 +316,13 @@ public struct OracleView: View {
             let outcome = try await engine.classify(sequence: sequence)
             result = outcome
             app.lastClassification = outcome
+
+            #if canImport(WatchConnectivity) && os(iOS)
+            let clanName = outcome.hits.first
+                .flatMap(\.family.clan)
+                .flatMap { app.clanByAccession[$0]?.identifier }
+            WatchBridge.shared.send(outcome, clanName: clanName)
+            #endif
         } catch {
             failure = "Could not classify that sequence: \(error)"
             result = nil
