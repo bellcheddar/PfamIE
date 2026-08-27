@@ -66,6 +66,21 @@ public struct Theme: Sendable, Equatable {
         }
     }
 
+    /// Distinct hues for the domains of one architecture, by N-to-C position.
+    ///
+    /// Clan colour is the right choice for a chip, where a family stands alone,
+    /// and the wrong one for the architecture track: two domains in the same
+    /// clan (or two unclanned ones) come out identical, and SRC drew its two
+    /// domains in the same blue. The track needs the lozenges told apart before
+    /// it needs them to encode clan membership, so position wins here.
+    public func domainColour(at index: Int) -> Color {
+        let hues: [Double] = [0.46, 0.74, 0.10, 0.58, 0.86, 0.33]
+        let hue = hues[index % hues.count]
+        return Color(hue: hue,
+                     saturation: isDark ? 0.58 : 0.68,
+                     brightness: isDark ? 0.90 : 0.70)
+    }
+
     /// A clan's colour, from the stable hue the forge assigned it.
     ///
     /// The hue wheel is deliberately narrowed to the teal-to-violet arc the

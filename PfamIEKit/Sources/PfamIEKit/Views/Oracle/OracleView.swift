@@ -235,8 +235,7 @@ public struct OracleView: View {
                                detail: "\(result.windowsScanned) windows scanned")
                 ArchitectureTrack(
                     residueCount: result.residueCount,
-                    domains: result.domains,
-                    colourFor: { app.clanColour(for: $0, theme: theme) }
+                    domains: result.domains
                 )
                 if !result.domains.isEmpty {
                     Button("What else is built like this?",

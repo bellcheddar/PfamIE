@@ -20,6 +20,7 @@ struct SceneKitGalaxy: PlatformViewRepresentable {
 
     final class Coordinator: NSObject {
         let onSelect: (Int) -> Void
+        var builtForDarkTheme: Bool?
         var positions: [SIMD3<Float>] = []
         var cameraNode: SCNNode?
         var cometNode: SCNNode?
@@ -78,13 +79,13 @@ struct SceneKitGalaxy: PlatformViewRepresentable {
         camera.zFar = 200
         // A little bloom is what makes a point cloud read as a starfield
         // rather than as scatter-plot dots.
-        camera.bloomIntensity = 0.7
-        camera.bloomThreshold = 0.45
-        camera.bloomBlurRadius = 6
+        camera.bloomIntensity = 0.35
+        camera.bloomThreshold = 0.62
+        camera.bloomBlurRadius = 5
 
         let cameraNode = SCNNode()
         cameraNode.camera = camera
-        cameraNode.position = SCNVector3(0, 0, 3.4)
+        cameraNode.position = SCNVector3(0, 0, 2.6)
         scene.rootNode.addChildNode(cameraNode)
         view.pointOfView = cameraNode
         context.coordinator.cameraNode = cameraNode
@@ -102,7 +103,9 @@ struct SceneKitGalaxy: PlatformViewRepresentable {
     func updatePlatformView(_ view: SCNView, context: Context) {
         guard let scene = view.scene else { return }
 
-        if context.coordinator.positions.count != points.count {
+        if context.coordinator.positions.count != points.count
+            || context.coordinator.builtForDarkTheme != theme.isDark {
+            context.coordinator.builtForDarkTheme = theme.isDark
             context.coordinator.positions = points.map(\.position)
             scene.rootNode.childNodes
                 .filter { $0.name == "cloud" }
@@ -130,12 +133,25 @@ struct SceneKitGalaxy: PlatformViewRepresentable {
         positions.reserveCapacity(points.count)
         colours.reserveCapacity(points.count)
 
+        // Additive blending sums every overlapping point, and 30,031 points in
+        // a UMAP have a very dense core. At full intensity that core saturates
+        // to flat white and every clan colour in the middle of the map is lost,
+        // which is the one thing the Galaxy exists to show. Damping each point
+        // lets ten or twenty overlap before they reach white, so density reads
+        // as brightness and the hue survives.
+        let intensity: Float = theme.isDark ? 0.22 : 1.0
+
         for point in points {
             positions.append(SCNVector3(point.position.x, point.position.y, point.position.z))
             // Unknown families are drawn dim rather than a different hue: the
             // dark proteome should read as unlit sky, not as another clan.
             let alpha: Float = point.isDUF ? 0.45 : 1.0
-            colours.append(SIMD4<Float>(point.colour.x, point.colour.y, point.colour.z, alpha))
+            colours.append(SIMD4<Float>(
+                point.colour.x * intensity,
+                point.colour.y * intensity,
+                point.colour.z * intensity,
+                alpha
+            ))
         }
 
         let positionSource = SCNGeometrySource(vertices: positions)
@@ -158,14 +174,18 @@ struct SceneKitGalaxy: PlatformViewRepresentable {
             primitiveCount: points.count,
             bytesPerIndex: MemoryLayout<UInt32>.size
         )
-        element.pointSize = 6
-        element.minimumPointScreenSpaceRadius = 1.4
-        element.maximumPointScreenSpaceRadius = 7
+        element.pointSize = 4
+        element.minimumPointScreenSpaceRadius = 1.0
+        element.maximumPointScreenSpaceRadius = 3.5
 
         let geometry = SCNGeometry(sources: [positionSource, colourSource], elements: [element])
         let material = SCNMaterial()
         material.lightingModel = .constant
-        material.blendMode = .add          // glow, and overlapping clans brighten
+        // Additive blending is what makes a dark starfield glow, and it is
+        // exactly wrong on a light ground: every overlap drives towards white
+        // until the dense centre of the map is a featureless blob. Light mode
+        // blends normally, so dense regions go darker rather than brighter.
+        material.blendMode = theme.isDark ? .add : .alpha
         material.writesToDepthBuffer = false
         material.isDoubleSided = true
         geometry.materials = [material]

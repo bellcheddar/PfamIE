@@ -38,8 +38,12 @@ public final class AppEnvironment {
     private static let appearanceKey = "appearance"
 
     public init() {
+        // Dark is the default, not "follow the system". The Galaxy is a
+        // starfield: on a white ground the point cloud's additive glow reads
+        // as a white blob, and the whole instrument metaphor goes with it.
+        // Light mode is fully supported and one tap away in Settings.
         let stored = UserDefaults.standard.string(forKey: Self.appearanceKey)
-        self.appearance = AppearanceChoice(rawValue: stored ?? "") ?? .system
+        self.appearance = AppearanceChoice(rawValue: stored ?? "") ?? .dark
     }
 
     public func load(assets: PfamIEEngine.Assets) async {

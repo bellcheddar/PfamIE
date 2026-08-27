@@ -48,6 +48,32 @@ public final class Router {
 
     public init() {}
 
+    #if DEBUG
+    /// Debug-only launch arguments, so a screenshot or a UI test can land on a
+    /// particular tab with a particular sequence already classified. There is
+    /// no other way to drive the app from the outside, and "it builds" is not
+    /// evidence that the Oracle draws a result correctly.
+    ///
+    ///     xcrun simctl launch booted com.mdeller.pfamie \
+    ///         -PfamIETab oracle -PfamIESequence KVFGRCELAA...
+    public func applyLaunchArguments(_ defaults: UserDefaults = .standard) {
+        if let name = defaults.string(forKey: "PfamIETab"),
+           let tab = AppTab.allCases.first(where: {
+               $0.title.lowercased().replacingOccurrences(of: " ", with: "") == name.lowercased()
+           }) {
+            selectedTab = tab
+        }
+        if let sequence = defaults.string(forKey: "PfamIESequence"), !sequence.isEmpty {
+            oraclePrefill = sequence
+            selectedTab = .oracle
+        }
+        if let query = defaults.string(forKey: "PfamIEQuery"), !query.isEmpty {
+            fieldGuideQuery = query
+            selectedTab = .fieldGuide
+        }
+    }
+    #endif
+
     public func go(_ destination: Destination) {
         switch destination {
         case .family(let id):

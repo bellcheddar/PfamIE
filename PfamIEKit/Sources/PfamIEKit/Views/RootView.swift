@@ -53,6 +53,9 @@ public struct RootView: View {
         .background(theme.bgDeep)
         .task {
             if case .loading = app.state { await app.load(assets: assets) }
+            #if DEBUG
+            router.applyLaunchArguments()
+            #endif
         }
         .sheet(item: Binding(
             get: { router.presentedFamily },

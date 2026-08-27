@@ -20,6 +20,21 @@ PfamIE turns all 30,031 Pfam families into an inference engine that fits in your
 
 ---
 
+## 📸 What it looks like
+
+<table>
+<tr>
+<td width="33%"><img src="docs/screenshots/galaxy.png" alt="The Galaxy: all 30,031 Pfam families as a 3D point cloud"></td>
+<td width="33%"><img src="docs/screenshots/oracle.png" alt="The Oracle classifying human SRC kinase"></td>
+<td width="33%"><img src="docs/screenshots/field-guide.png" alt="The Field Guide answering a plain-English query offline"></td>
+</tr>
+<tr>
+<td><b>Galaxy.</b> Every family, coloured by clan, the dark proteome drawn dim.</td>
+<td><b>Oracle.</b> Human SRC: the kinase domain called at 95%, read from residues 417 to 512, with the architecture below it.</td>
+<td><b>Field Guide.</b> "breaks down plastic" finds PETase, with no network.</td>
+</tr>
+</table>
+
 ## ✨ What it does
 
 | Tab | What it is for |

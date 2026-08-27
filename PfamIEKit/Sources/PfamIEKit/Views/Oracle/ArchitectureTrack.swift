@@ -18,16 +18,18 @@ public struct ArchitectureTrack: View {
 
     private let residueCount: Int
     private let domains: [PfamIEEngine.Classification.Domain]
-    private let colourFor: (Family) -> Color
 
     public init(
         residueCount: Int,
-        domains: [PfamIEEngine.Classification.Domain],
-        colourFor: @escaping (Family) -> Color
+        domains: [PfamIEEngine.Classification.Domain]
     ) {
         self.residueCount = residueCount
         self.domains = domains
-        self.colourFor = colourFor
+    }
+
+    private func colour(for domain: PfamIEEngine.Classification.Domain) -> Color {
+        let index = domains.firstIndex(where: { $0.id == domain.id }) ?? 0
+        return theme.domainColour(at: index)
     }
 
     public var body: some View {
@@ -42,13 +44,14 @@ public struct ArchitectureTrack: View {
                         .frame(height: 10)
 
                     ForEach(domains) { domain in
+                        let tint = colour(for: domain)
                         let x = CGFloat(domain.start - 1) * scale
                         let w = max(CGFloat(domain.length) * scale, 3)
                         Button {
                             router.go(.family(domain.family.accession))
                         } label: {
                             RoundedRectangle(cornerRadius: 7, style: .continuous)
-                                .fill(colourFor(domain.family).gradient)
+                                .fill(tint.gradient)
                                 .frame(width: w, height: 26)
                                 .overlay(
                                     Text(domain.family.displayName)
@@ -58,7 +61,7 @@ public struct ArchitectureTrack: View {
                                         .padding(.horizontal, 4)
                                         .opacity(w > 46 ? 1 : 0)
                                 )
-                                .shadow(color: colourFor(domain.family).opacity(theme.isDark ? 0.5 : 0.2),
+                                .shadow(color: tint.opacity(theme.isDark ? 0.5 : 0.2),
                                         radius: 5)
                         }
                         .buttonStyle(.plain)
