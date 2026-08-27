@@ -66,7 +66,9 @@ public struct GalaxyView: View {
         .onChange(of: app.lastClassification?.residueCount) { _, _ in placeComet() }
         .onAppear { consumeFocus() }
         .onChange(of: router.galaxyFocus) { _, _ in consumeFocus() }
+        #if !os(visionOS)
         .sensoryFeedback(.selection, trigger: selection?.row)
+        #endif
     }
 
     private var searchBar: some View {

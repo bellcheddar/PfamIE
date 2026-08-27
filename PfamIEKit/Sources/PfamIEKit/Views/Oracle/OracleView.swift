@@ -39,7 +39,10 @@ public struct OracleView: View {
         }
         .background(theme.bgDeep)
         .navigationTitle(AppTab.oracle.title)
+        // Vision Pro has no haptics, and the modifier is visionOS 26 only.
+        #if !os(visionOS)
         .sensoryFeedback(.success, trigger: result?.residueCount)
+        #endif
         .fileImporter(
             isPresented: $showingImporter,
             allowedContentTypes: [.plainText, .data],
