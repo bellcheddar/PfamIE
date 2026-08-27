@@ -6,7 +6,7 @@ Read `README.md` for what it is. This file is for how to work on it.
 ## Hard rules
 
 1. **Do not quote the held-out seed accuracy as the app's accuracy.** The same
-   pipeline scores 0.72 top-1 on held-out Pfam seed sequences and 0.43 on real
+   pipeline scores 0.75 top-1 on held-out Pfam seed sequences and 0.49 on real
    UniProt proteins. Seeds are trimmed to domain boundaries and drawn from the
    alignments the centroids were built from, so they measure the index against
    its own kind. Every user-facing number comes from
@@ -53,7 +53,7 @@ Read `README.md` for what it is. This file is for how to work on it.
 | `PfamIEKit/` | SwiftPM package: engine, data, and all shared views. |
 | `Apps/` | Thin per-platform targets. |
 | `project.yml` | XcodeGen spec. **The `.xcodeproj` is derived and gitignored.** Never hand-edit it; run `Tools/generate-project.sh`. |
-| `assets/` | Forge output, gitignored. About 146 MB. |
+| `assets/` | Forge output, gitignored. About 148 MB. |
 
 The watch companion is excluded from the phone and desktop views by
 `#if !os(watchOS)`. It carries no assets and no model: the phone classifies and
@@ -67,7 +67,8 @@ account identifier lives in this public repo:
 
     set -a; source ~/.claude/skills/marcs-vibe-coding/credentials.env; set +a
 Release signs manually against `Apple Distribution`; Debug stays automatic.
-The App Store Connect app record is the one step the API cannot do.
+Three things have no API: the app record, App Groups (create *and* assign, both
+manual), and App Privacy. See `docs/TESTFLIGHT.md`.
 
 ## Things already measured, so do not re-litigate them
 
@@ -77,8 +78,9 @@ The App Store Connect app record is the one step the API cannot do.
 | Sequences per centroid? | 16, chosen by a stratified sweep across the alignment. Choosing by closeness to median length selects near-duplicates. | `stage_metadata.py` |
 | Whole sequence or windows? | Multi-scale windows: 0.285 whole, 0.425 at one width, 0.535 at four. | `benchmark_multiscale.py` |
 | Are there hub families? | No. The most connected family is nearest to 19 of 30,031, and the top 15 absorb 0.6% of nearest-neighbour slots. | measured 2026-08-27 |
-| int8 centroids? | Free (top-1 0.7150 against 0.7149) and halves 18 MB to 9.6 MB. Not yet done. | `assets/build/int8_test.log` |
-| A bigger model? | Not tried. ESM-2 t6-8M is 8M parameters and 0.43 top-1 on real proteins is its honest ceiling. Measure t12-35M on the real-protein benchmark, never on seeds. | open |
+| int8 matrices? | Done. Free (top-1 0.7150 against 0.7149); centroids and descriptions both quantised. | `assets/build/int8_test.log` |
+| A bigger model? | Done: t12-35M shipped. Real top-1 0.430 to 0.492, multi-domain recall 0.358 to 0.478 at higher precision, for 5.2x inference. t30-150M untested. | `assets/build_t12/evaluation.json` |
+| Boundary refinement? | Tried twice, both worse. Narrow tiles: IoU 0.44 to 0.19. Per-residue segmentation: recall up, precision 0.76 to 0.41. The limit is detection, not localisation. | `assets/build/bnd_multi_*.log` |
 
 ## Forge notes
 

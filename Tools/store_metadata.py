@@ -24,6 +24,9 @@ PRIVACY_POLICY_URL = "https://bellcheddar.github.io/PfamIE/privacy.html"
 SUPPORT_URL = "https://github.com/bellcheddar/PfamIE"
 MARKETING_URL = "https://marcdeller.com"
 
+# Required before review. Year and holder, no (c) symbol: Apple adds it.
+COPYRIGHT = "2026 Marc C. Deller"
+
 PRIMARY_CATEGORY = "REFERENCE"
 SECONDARY_CATEGORY = "EDUCATION"
 
@@ -139,6 +142,16 @@ def set_app_info_localisation(auth: str, app: str) -> None:
 
 def versions(auth: str, app: str) -> list[dict]:
     return call("GET", f"/apps/{app}/appStoreVersions?limit=10", auth=auth)["data"]
+
+
+def set_copyright(auth: str, app: str) -> None:
+    """Copyright sits on the version, so a multiplatform record needs it thrice."""
+    for version in versions(auth, app):
+        call("PATCH", f"/appStoreVersions/{version['id']}", {
+            "data": {"type": "appStoreVersions", "id": version["id"],
+                     "attributes": {"copyright": COPYRIGHT}}
+        }, auth=auth)
+        print(f"  {version['attributes']['platform']}: copyright set")
 
 
 def set_version_localisations(auth: str, app: str) -> None:
@@ -277,6 +290,9 @@ SCREENSHOT_PLAN = {
         ("APP_IPAD_PRO_3GEN_129", "screenshots/ipad13"),
     ],
     "VISION_OS": [("APP_APPLE_VISION_PRO", "screenshots/visionos")],
+    # An iOS binary that embeds a watch app must ship a watch screenshot, and
+    # App Store Connect only says so at "Add for Review".
+    "IOS_WATCH": [("APP_WATCH_SERIES_10", "screenshots/watch")],
     "MAC_OS": [("APP_DESKTOP", "screenshots/macos")],
 }
 
@@ -289,7 +305,9 @@ def upload_screenshots(auth: str, app: str) -> None:
 
     for version in versions(auth, app):
         platform = version["attributes"].get("platform")
-        plan = SCREENSHOT_PLAN.get(platform)
+        plan = list(SCREENSHOT_PLAN.get(platform) or [])
+        if platform == "IOS":
+            plan += SCREENSHOT_PLAN.get("IOS_WATCH") or []
         if not plan:
             continue
 
@@ -581,6 +599,7 @@ if __name__ == "__main__":
         "categories": set_categories,
         "appinfo": set_app_info_localisation,
         "versions": set_version_localisations,
+        "copyright": set_copyright,
         "pricing": set_free,
         "agerating": set_age_rating,
         "rights": set_content_rights,

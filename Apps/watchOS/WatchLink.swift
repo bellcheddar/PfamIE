@@ -42,6 +42,20 @@ final class WatchLink: NSObject {
            let stored = try? JSONDecoder().decode(WatchResult.self, from: data) {
             latest = stored
         }
+        #if DEBUG
+        // Lets a screenshot show a real result. The watch has nothing to
+        // display until a paired phone sends one, and a simulator has no
+        // paired phone, so the App Store shot would otherwise be the empty
+        // state telling the reviewer to go and use their phone.
+        if UserDefaults.standard.bool(forKey: "PfamIEWatchDemo") {
+            latest = WatchResult(
+                family: "PK_Tyr_Ser-Thr", accession: "PF07714", clan: "PKinase",
+                probability: 0.91, band: "high", residueCount: 536,
+                receivedAt: Date()
+            )
+        }
+        #endif
+
         guard WCSession.isSupported() else { return }
         WCSession.default.delegate = self
         WCSession.default.activate()
