@@ -16,6 +16,7 @@ pads, and passes a pooling mask that already excludes BOS, EOS and padding.
 
 from __future__ import annotations
 
+import gzip
 import json
 import shutil
 from pathlib import Path
@@ -52,6 +53,15 @@ class WhitenedProteinEmbedder(nn.Module):
         hidden = torch.where(m > 0, hidden, torch.zeros_like(hidden))
 
         pooled = hidden.sum(dim=1) / m.sum(dim=1).clamp(min=1.0)
+
+        # L2 normalise BEFORE centring. `mu` and `W` were fitted in the forge on
+        # unit-length embeddings (stage_embed normalises every sequence before
+        # averaging), and the raw pooled vector has a norm around 7.8. Skipping
+        # this made the centring meaningless and the whole classification
+        # garbage, while torch and Core ML agreed to a cosine of 0.99999
+        # because both were running the same wrong recipe.
+        pooled = pooled / pooled.norm(dim=-1, keepdim=True).clamp(min=1e-9)
+
         v = (pooled - self.mu) @ self.W
         return v / v.norm(dim=-1, keepdim=True).clamp(min=1e-9)
 
@@ -359,6 +369,63 @@ def export_esm_vocab(out_dir: Path) -> dict:
     return {"vocab_size": len(ordered), **{k: v for k, v in spec.items() if k != "tokens"}}
 
 
+def verify_against_index(build_dir: Path, out_dir: Path, sample: int = 200) -> dict:
+    """
+    Embed real held-out seed sequences through the *converted* model and look
+    them up in the shipped centroid matrix.
+
+    Parity against the torch wrapper only proves the two agree; it cannot
+    notice that both implement the same wrong recipe. This measures where the
+    vector actually lands, and is the check that catches a broken preprocessing
+    step. Top-1 here should sit near the calibrated 0.71.
+    """
+    import coremltools as ct
+    from transformers import AutoTokenizer
+
+    families = json.loads(
+        gzip.open(build_dir / "families.json.gz", "rt", encoding="utf-8").read()
+    )
+    Cw = np.load(build_dir / "centroids_whitened.npy")
+    tok = AutoTokenizer.from_pretrained(ESM_ID)
+    model = ct.models.MLModel(str(out_dir / "PfamIEProteinEmbedder.mlpackage"))
+
+    rng = np.random.default_rng(0)
+    candidates = [i for i, f in enumerate(families) if f["heldout_seqs"]]
+    chosen = rng.choice(len(candidates), size=min(sample, len(candidates)), replace=False)
+
+    hits1 = hits5 = tested = 0
+    for pick in chosen:
+        row = candidates[int(pick)]
+        seq = families[row]["heldout_seqs"][0]["sequence"]
+        enc = tok(seq, padding="max_length", truncation=True,
+                  max_length=ESM_LEN, return_tensors="np")
+        am = enc["attention_mask"].astype(np.int32)
+        pool = am.astype(np.float32).copy()
+        pool[:, 0] = 0.0
+        pool[0, int(am.sum()) - 1] = 0.0
+        v = np.asarray(model.predict({
+            "input_ids": enc["input_ids"].astype(np.int32),
+            "attention_mask": am,
+            "pool_mask": pool,
+        })["embedding"]).reshape(-1)
+        order = np.argsort(-(Cw @ v))[:5]
+        hits1 += int(order[0] == row)
+        hits5 += int(row in order)
+        tested += 1
+
+    result = {
+        "sampled": tested,
+        "top1": hits1 / max(tested, 1),
+        "top5": hits5 / max(tested, 1),
+    }
+    if result["top1"] < 0.55:
+        raise SystemExit(
+            f"Converted model does not land where it should: top1={result['top1']:.3f} "
+            f"over {tested} held-out sequences (expected ~0.71)."
+        )
+    return result
+
+
 def run(build_dir: Path, out_dir: Path) -> dict:
     out_dir.mkdir(parents=True, exist_ok=True)
     stats = {
@@ -366,6 +433,7 @@ def run(build_dir: Path, out_dir: Path) -> dict:
         "protein_embedder": convert_esm(build_dir, out_dir),
         "text_embedder": convert_minilm(out_dir),
     }
+    stats["end_to_end"] = verify_against_index(build_dir, out_dir)
     (build_dir / "stage_coreml.json").write_text(json.dumps(stats, indent=2))
     return stats
 

@@ -25,8 +25,8 @@ PREFERRED_ORGANISMS = (
 # (A0A0A0MRZ7). Six is a decent offline proxy for "reviewed".
 SWISSPROT_RE = re.compile(r"^[OPQ][0-9][A-Z0-9]{3}[0-9]$|^[A-NR-Z][0-9][A-Z][A-Z0-9]{2}[0-9]$")
 
-N_CENTROID_SEQS = 3      # sequences averaged into the family centroid
-N_HELDOUT_SEQS = 1       # sequences kept back to calibrate confidence
+N_CENTROID_SEQS = 16      # sequences averaged into the family centroid
+N_HELDOUT_SEQS = 2       # sequences kept back to calibrate confidence
 MIN_LEN, MAX_LEN = 20, 1022   # ESM-2 takes 1024 tokens including BOS/EOS
 
 
@@ -46,27 +46,57 @@ def _pick_sequences(family) -> tuple[list, list, dict | None]:
     Choose the centroid sequences, the held-out sequences and the structural
     representative for one family.
 
-    Centroid sequences are the ones closest to the median seed length: seed
-    alignments contain fragments and outsized multi-domain rows, and averaging
-    those into a centroid blurs the family.
+    Selection is a length filter followed by a stratified sweep across the
+    alignment, and both halves are load bearing.
+
+    The length filter drops fragments and outsized multi-domain rows, which
+    blur a centroid when averaged in.
+
+    The stratified sweep is what stops the centroid describing one corner of
+    its family. Picking the sequences closest to the median length looks
+    sensible and does the opposite: it selects near-duplicates. PF00062 (Lys)
+    covers both c-type lysozymes and the alpha-lactalbumins, and typicality
+    chose six lactalbumins out of eight, all 120 residues long, leaving the
+    centroid unable to recognise hen lysozyme. Seed alignments are ordered
+    roughly phylogenetically, so an even sweep through them costs nothing and
+    spans the family instead.
     """
-    usable = [s for s in family.sequences if MIN_LEN <= s.length <= MAX_LEN]
-    if not usable:
-        # Fall back to truncating over-long rows rather than dropping the family.
-        usable = [s for s in family.sequences if s.length >= MIN_LEN]
-        for s in usable:
+    candidates = [s for s in family.sequences if MIN_LEN <= s.length <= MAX_LEN]
+    if not candidates:
+        candidates = [s for s in family.sequences if s.length >= MIN_LEN]
+        for s in candidates:
             s.sequence = s.sequence[:MAX_LEN]
-    if not usable:
+    if not candidates:
         return [], [], None
 
-    lengths = sorted(s.length for s in usable)
+    lengths = sorted(s.length for s in candidates)
     median_len = lengths[len(lengths) // 2]
-    by_typicality = sorted(usable, key=lambda s: (abs(s.length - median_len), s.name))
+    typical = [
+        s for s in candidates
+        if 0.6 * median_len <= s.length <= 1.6 * median_len
+    ] or candidates
 
-    centroid = by_typicality[:N_CENTROID_SEQS]
-    heldout = by_typicality[N_CENTROID_SEQS : N_CENTROID_SEQS + N_HELDOUT_SEQS]
+    if len(typical) <= N_CENTROID_SEQS:
+        # Too few sequences to hold any back and still describe the family.
+        # These families simply do not contribute to the held-out benchmark.
+        centroid = list(typical)
+        heldout: list = []
+    else:
+        wanted = min(len(typical), N_CENTROID_SEQS + N_HELDOUT_SEQS)
+        step = (len(typical) - 1) / (wanted - 1)
+        chosen = [typical[round(i * step)] for i in range(wanted)]
 
-    rep = min(usable, key=lambda s: _representative_score(s, median_len))
+        # Hold back sequences from inside the sweep rather than off one end, so
+        # the benchmark is not systematically one clade the centroid never saw.
+        hold_count = wanted - N_CENTROID_SEQS
+        hold_at = {
+            round((j + 1) * (wanted - 1) / (hold_count + 1))
+            for j in range(hold_count)
+        }
+        centroid = [s for i, s in enumerate(chosen) if i not in hold_at]
+        heldout = [s for i, s in enumerate(chosen) if i in hold_at]
+
+    rep = min(candidates, key=lambda s: _representative_score(s, median_len))
     representative = (
         {
             "uniprot": rep.uniprot,
