@@ -61,10 +61,11 @@ public actor PfamIEEngine {
         self.calibration = manifest.calibrationSettings
         self.store = try PfamStore(url: assets.database)
 
-        let centroidMatrix = try Float16Matrix(
+        let centroidMatrix = try EmbeddingMatrixLoader.load(
             contentsOf: assets.centroids,
             rows: manifest.families,
-            columns: manifest.protein_dim
+            columns: manifest.protein_dim,
+            dtype: manifest.dtype(of: "centroids.bin")
         )
         self.index = CentroidIndex(matrix: centroidMatrix, calibration: manifest.calibrationSettings)
         self.embedder = try ProteinEmbedder(
@@ -77,10 +78,11 @@ public actor PfamIEEngine {
         // Everything else is required, so it throws.
         if FileManager.default.fileExists(atPath: assets.textModel.path),
            FileManager.default.fileExists(atPath: assets.descriptionEmbeddings.path) {
-            let descriptionMatrix = try Float16Matrix(
+            let descriptionMatrix = try EmbeddingMatrixLoader.load(
                 contentsOf: assets.descriptionEmbeddings,
                 rows: manifest.families,
-                columns: manifest.text_dim
+                columns: manifest.text_dim,
+                dtype: manifest.dtype(of: "desc_emb.bin")
             )
             self.semantic = try SemanticSearch(
                 modelURL: assets.textModel,

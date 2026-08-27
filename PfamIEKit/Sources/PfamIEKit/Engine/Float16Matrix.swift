@@ -11,7 +11,7 @@ import Foundation
 /// of the whole matrix. A resident copy of both matrices would be 84 MB on a
 /// phone; chunking keeps it to the mapped pages plus one reusable scratch
 /// buffer, and the conversion is memory-bandwidth bound either way.
-public final class Float16Matrix: @unchecked Sendable {
+public final class Float16Matrix: EmbeddingMatrix, @unchecked Sendable {
 
     public let rows: Int
     public let columns: Int

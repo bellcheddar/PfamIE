@@ -45,9 +45,10 @@ enum Assets {
 
     static func centroids() throws -> CentroidIndex {
         let m = try manifest()
-        let matrix = try Float16Matrix(
+        let matrix = try EmbeddingMatrixLoader.load(
             contentsOf: bundle!.appendingPathComponent("centroids.bin"),
-            rows: m.families, columns: m.protein_dim
+            rows: m.families, columns: m.protein_dim,
+            dtype: m.dtype(of: "centroids.bin")
         )
         return CentroidIndex(matrix: matrix, calibration: m.calibrationSettings)
     }

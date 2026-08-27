@@ -14,13 +14,13 @@ public final class CentroidIndex: @unchecked Sendable {
         public let probability: Float
     }
 
-    public let matrix: Float16Matrix
+    public let matrix: any EmbeddingMatrix
     public let calibration: Calibration
 
     public var count: Int { matrix.rows }
     public var dimensions: Int { matrix.columns }
 
-    public init(matrix: Float16Matrix, calibration: Calibration) {
+    public init(matrix: any EmbeddingMatrix, calibration: Calibration) {
         self.matrix = matrix
         self.calibration = calibration
     }

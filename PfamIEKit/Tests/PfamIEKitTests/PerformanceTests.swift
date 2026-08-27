@@ -59,9 +59,10 @@ struct PerformanceTests {
     @Test("Semantic search over 30k descriptions", .timeLimit(.minutes(5)))
     func searchLatency() throws {
         let manifest = try Assets.manifest()
-        let matrix = try Float16Matrix(
+        let matrix = try EmbeddingMatrixLoader.load(
             contentsOf: Assets.bundle!.appendingPathComponent("desc_emb.bin"),
-            rows: manifest.families, columns: manifest.text_dim
+            rows: manifest.families, columns: manifest.text_dim,
+            dtype: manifest.dtype(of: "desc_emb.bin")
         )
         let search = try SemanticSearch(
             modelURL: try Assets.compiledModel("PfamIETextEmbedder"),

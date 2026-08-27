@@ -36,17 +36,34 @@ check_file "$RES/PfamIEProteinEmbedder.mlmodelc" 8000
 check_file "$RES/PfamIETextEmbedder.mlmodelc"    8000
 
 echo "Data:"
-for f in manifest.json pfam.sqlite centroids.bin umap3d.bin desc_emb.bin; do
-    if [ -e "$RES/bundle/$f" ]; then base="$RES/bundle"; else base="$RES"; fi
-    case "$f" in
-        pfam.sqlite)   min=40000 ;;
-        centroids.bin) min=15000 ;;
-        desc_emb.bin)  min=15000 ;;
-        umap3d.bin)    min=200   ;;
-        *)             min=1     ;;
-    esac
-    check_file "$base/$f" "$min"
-done
+# Sizes come from the manifest the forge wrote, not from constants here.
+# Hard-coded floors were calibrated for float16 and rejected a correct int8
+# bundle the moment the format changed: a check that has to be edited every
+# time the data changes will eventually be edited to pass.
+if [ -e "$RES/bundle/manifest.json" ]; then DATA="$RES/bundle"; else DATA="$RES"; fi
+check_file "$DATA/manifest.json" 1
+check_file "$DATA/pfam.sqlite" 40000
+
+SIZES=$("$(dirname "$0")/manifest_sizes.py" "$DATA/manifest.json" 2>&1)
+if [ $? -ne 0 ] || [ -z "$SIZES" ]; then
+    # An unreadable manifest must fail loudly. An earlier version let this
+    # path print nothing and still report OK, which passed a bundle with a
+    # deliberately truncated matrix.
+    note "manifest" "UNREADABLE: $SIZES"; fail=1
+else
+    while IFS='|' read -r name expected; do
+        [ -z "$name" ] && continue
+        if [ ! -f "$DATA/$name" ]; then
+            note "$name" "MISSING"; fail=1; continue
+        fi
+        actual=$(stat -f%z "$DATA/$name")
+        if [ "$actual" != "$expected" ]; then
+            note "$name" "SIZE $actual, manifest says $expected"; fail=1
+        else
+            note "$name" "$(du -sh "$DATA/$name" | cut -f1) (matches manifest)"
+        fi
+    done <<< "$SIZES"
+fi
 
 echo "Structure viewer:"
 if [ -e "$RES/bundle/molstar" ]; then MOL="$RES/bundle/molstar"; else MOL="$RES/molstar"; fi

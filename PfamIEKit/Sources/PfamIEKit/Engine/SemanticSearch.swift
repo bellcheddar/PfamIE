@@ -22,9 +22,9 @@ public final class SemanticSearch: @unchecked Sendable {
 
     private let model: MLModel
     private let tokenizer: WordPieceTokenizer
-    private let matrix: Float16Matrix
+    private let matrix: any EmbeddingMatrix
 
-    public init(modelURL: URL, vocabularyURL: URL, matrix: Float16Matrix) throws {
+    public init(modelURL: URL, vocabularyURL: URL, matrix: any EmbeddingMatrix) throws {
         let configuration = MLModelConfiguration()
         configuration.computeUnits = .all
         self.model = try MLModel(contentsOf: modelURL, configuration: configuration)

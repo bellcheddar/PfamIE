@@ -137,6 +137,27 @@ struct ForgedAssetTests {
         #expect(try store.familyCount() == manifest.families)
     }
 
+    @Test("Quantised matrices round-trip to unit length")
+    func quantisationRoundTrip() throws {
+        let manifest = try Assets.manifest()
+        let index = try Assets.centroids()
+
+        // int8 with a per-row scale must still hand back a unit vector, or the
+        // dot product it feeds is no longer a cosine and every threshold in the
+        // calibration is measuring something else.
+        for row in [0, 7, index.count / 3, index.count - 1] {
+            let vector = index.matrix.row(row)
+            let magnitude = sqrt(vector.reduce(0) { $0 + $1 * $1 })
+            #expect(abs(magnitude - 1.0) < 0.01, "row \(row) has |v| = \(magnitude)")
+        }
+
+        // Whatever format shipped, the manifest must describe it: loading the
+        // wrong reader against the right bytes is a silent size mismatch away
+        // from garbage.
+        #expect(["int8+scale", "float16"].contains(manifest.dtype(of: "centroids.bin")))
+        #expect(["int8+scale", "float16"].contains(manifest.dtype(of: "desc_emb.bin")))
+    }
+
     @Test("Stored centroids are unit length")
     func centroidsNormalised() throws {
         let index = try Assets.centroids()

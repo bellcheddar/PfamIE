@@ -63,6 +63,12 @@ public struct AssetManifest: Sendable, Codable {
         )
     }
 
+    /// The storage format the forge used for a matrix, so the app loads what
+    /// is actually on disk rather than what it was compiled expecting.
+    public func dtype(of file: String) -> String {
+        files.first { $0.file == file }?.dtype ?? "float16"
+    }
+
     public static func load(from url: URL) throws -> AssetManifest {
         try JSONDecoder().decode(AssetManifest.self, from: Data(contentsOf: url))
     }
