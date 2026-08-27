@@ -9,6 +9,13 @@ assets/build/
 assets/coreml/
 assets/bundle/
 
+# SwiftPM build products. `build/` alone does not cover this: SwiftPM uses a
+# dot-prefixed `.build/`, and missing it committed 4,836 files and 146 MB of
+# module caches before the first push, which is what made that push hang.
+.build/
+.swiftpm/
+Package.resolved
+
 # Xcode
 *.xcuserstate
 xcuserdata/
