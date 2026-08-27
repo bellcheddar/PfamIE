@@ -24,3 +24,6 @@ build/
 .DS_Store
 PfamIE.xcodeproj/
 assets/icon/
+
+# Release build products
+build/

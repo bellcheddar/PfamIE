@@ -17,7 +17,9 @@ import numpy as np
 import torch
 from transformers import AutoModel, AutoTokenizer
 
-MODEL_ID = "sentence-transformers/all-MiniLM-L6-v2"
+import sys as _sys; from pathlib import Path as _Path
+_sys.path.insert(0, str(_Path(__file__).resolve().parent))
+from model_config import TEXT_MODEL_ID as MODEL_ID
 MAX_TOKENS = 256          # abstracts are short; 256 covers 99% of them
 BATCH = 128
 

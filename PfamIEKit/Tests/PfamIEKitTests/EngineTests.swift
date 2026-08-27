@@ -252,7 +252,11 @@ struct ForgedAssetTests {
     func manifestMatchesMatrices() throws {
         let manifest = try Assets.manifest()
         #expect(manifest.families > 25_000)
-        #expect(manifest.protein_dim == 320)
+        // Read from the manifest, never hard-coded: the model tier changed
+        // from t6-8M (320) to t12-35M (480) and a constant here would have
+        // been a test asserting the app's own past.
+        #expect(manifest.protein_dim > 0)
+        #expect(manifest.protein_dim % 32 == 0)
 
         // Float16Matrix throws on a size mismatch, so constructing it is the check.
         let index = try Assets.centroids()
@@ -315,7 +319,7 @@ struct ForgedAssetTests {
         let embedder = try Assets.proteinEmbedder()
 
         let vector = try embedder.embed(sequence: Probes.lysozyme)
-        #expect(vector.count == 320)
+        #expect(vector.count == (try Assets.manifest().protein_dim))
 
         let magnitude = sqrt(vector.reduce(0) { $0 + $1 * $1 })
         #expect(abs(magnitude - 1.0) < 1e-2, "model returned |v| = \(magnitude)")
@@ -323,6 +327,8 @@ struct ForgedAssetTests {
         let hits = index.search(vector, k: 5)
         let families = try store.families(rows: hits.map(\.row))
         let accessions = families.map(\.accession.rawValue)
+        // With t12-35M this is the top hit outright, not merely present.
+        #expect(accessions.first == "PF00062", "top 5 were \(accessions)")
         print("lysozyme top 5: " + zip(families, hits)
             .map { "\($0.0.identifier) \(String(format: "%.3f", $0.1.probability))" }
             .joined(separator: ", "))

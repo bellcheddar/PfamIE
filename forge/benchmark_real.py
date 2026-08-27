@@ -24,7 +24,9 @@ import requests
 import torch
 from transformers import AutoModel, AutoTokenizer
 
-MODEL_ID = "facebook/esm2_t6_8M_UR50D"
+import sys as _sys; from pathlib import Path as _Path
+_sys.path.insert(0, str(_Path(__file__).resolve().parent))
+from model_config import PROTEIN_MODEL_ID as MODEL_ID
 UNIPROT_STREAM = "https://rest.uniprot.org/uniprotkb/stream"
 
 

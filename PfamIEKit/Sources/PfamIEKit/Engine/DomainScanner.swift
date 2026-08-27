@@ -4,7 +4,8 @@ import Foundation
 /// window widths.
 ///
 /// Measured on 400 real single-domain UniProt proteins, ranked against all
-/// 30,031 families:
+/// 30,031 families (with ESM-2 t6-8M, which is what the comparison was run on;
+/// t12-35M lifts every row but the ordering is the point):
 ///
 ///   whole sequence only        top-1 0.285   top-5 0.435
 ///   one 160-residue window     top-1 0.425   top-5 0.548
@@ -18,10 +19,11 @@ import Foundation
 /// four widths recovers a quarter more families than the best single width.
 /// Multi-scale costs inference time only, nothing in bundle size.
 ///
-/// Held-out Pfam seed sequences score around 0.72 on the same task. They are
+/// Held-out Pfam seed sequences score around 0.75 on the same task. They are
 /// domain-trimmed and drawn from the alignments the centroids came from, so
-/// that number describes the index, not the app. The figures above are the ones
-/// the app is entitled to quote.
+/// that number describes the index, not the app. On real proteins the shipped
+/// t12-35M index scores 0.49 top-1, and finds 47.8% of the domains in a
+/// multi-domain protein at 0.84 precision.
 public struct DomainScanner: Sendable {
 
     public struct Scale: Sendable, Hashable {

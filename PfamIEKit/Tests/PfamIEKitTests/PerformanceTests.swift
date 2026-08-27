@@ -25,10 +25,33 @@ struct PerformanceTests {
         let ane = try Assets.proteinEmbedder(computeUnits: .all)
         let cpu = try Assets.proteinEmbedder(computeUnits: .cpuOnly)
 
-        let aneMs = try time(30) { _ = try ane.embed(sequence: Probes.lysozyme) }
-        let cpuMs = try time(30) { _ = try cpu.embed(sequence: Probes.lysozyme) }
+        // Interleaved, one call each per round, rather than timing 30 of one
+        // and then 30 of the other. Other suites run concurrently and also use
+        // Core ML, and with a 31 ms model that contention swamps the
+        // difference: measured back to back the two came out equal at 74 ms
+        // each, while standalone the same model is 31 ms on the ANE and 76 on
+        // the CPU. Interleaving makes both paths see the same load, so the
+        // ratio means something whatever else is running.
+        _ = try ane.embed(sequence: Probes.lysozyme)
+        _ = try cpu.embed(sequence: Probes.lysozyme)
 
-        print(String(format: "ESM-2 t6-8M, 512 tokens: ANE %.2f ms, CPU %.2f ms, speedup %.1fx",
+        var aneTotal = 0.0
+        var cpuTotal = 0.0
+        let rounds = 15
+        for _ in 0..<rounds {
+            var mark = Date()
+            _ = try ane.embed(sequence: Probes.lysozyme)
+            aneTotal += Date().timeIntervalSince(mark)
+
+            mark = Date()
+            _ = try cpu.embed(sequence: Probes.lysozyme)
+            cpuTotal += Date().timeIntervalSince(mark)
+        }
+        let aneMs = aneTotal / Double(rounds) * 1000
+        let cpuMs = cpuTotal / Double(rounds) * 1000
+
+        print(String(format: "protein model, 512 tokens: ANE %.1f ms, CPU %.1f ms, speedup %.1fx "
+                     + "(under concurrent test load; standalone is faster)",
                      aneMs, cpuMs, cpuMs / aneMs))
         #expect(aneMs < cpuMs, "the Neural Engine path is not faster; check it is still eligible")
     }
@@ -53,6 +76,8 @@ struct PerformanceTests {
 
         print(String(format: "SRC (536 aa, %d windows across 4 scales): %.0f ms end to end",
                      result.windowsScanned, ms))
+        // t12-35M is 5.2x t6-8M per window, so a 33-window scan is seconds
+        // rather than milliseconds. This is the ceiling that keeps it usable.
         #expect(ms < 8000)
     }
 

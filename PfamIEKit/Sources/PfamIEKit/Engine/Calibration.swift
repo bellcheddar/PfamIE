@@ -5,20 +5,19 @@ import Foundation
 /// Every constant here is fitted in the forge, never guessed, and fitted
 /// against *real UniProt proteins* rather than held-out Pfam seed sequences.
 /// That distinction is the difference between honest and flattering: the same
-/// pipeline scores 0.72 top-1 on held-out seeds and 0.43 on real proteins,
+/// pipeline scores 0.75 top-1 on held-out seeds and 0.49 on real proteins,
 /// because seeds are trimmed to domain boundaries and drawn from the very
-/// alignments the centroids were built from. Calibrated on seeds, an
-/// all-alanine nonsense sequence came back at 0.51.
+/// alignments the centroids were built from.
 ///
-/// Measured on 625 real proteins held back from the fit:
+/// Measured on 625 real proteins held back from the fit (ESM-2 t12-35M):
 ///
-///   High  (p >= 0.75)  22.7% of queries, 94.4% of them correct
-///   Mid   (p >= 0.45)  19.7% of queries, 55.3% correct
-///   Low   (p >= 0.25)  25.9% of queries, 30.9% correct
-///   None  (p <  0.25)  31.7% of queries,  9.6% correct
+///   High  (p >= 0.85)  19.7% of queries, 93.5% of them correct
+///   Mid   (p >= 0.45)  31.2% of queries, 69.7% correct
+///   Low   (p >= 0.20)  30.6% of queries, 23.6% correct
+///   None  (p <  0.20)  18.6% of queries,  5.2% correct
 ///
 /// The bottom band is why the Oracle can answer "no confident family": naming
-/// one there would be right about one time in ten.
+/// one there would be right about one time in twenty.
 public struct Calibration: Sendable, Codable, Equatable {
 
     public enum Band: String, Sendable, Codable, CaseIterable {
