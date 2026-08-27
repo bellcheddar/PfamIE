@@ -244,7 +244,7 @@ public final class PfamStore: @unchecked Sendable {
             })
 
         let rows = try query("""
-            SELECT id, signature, n_proteins, rep_uniprot, rep_length
+            SELECT id, n_proteins, rep_uniprot, rep_length
             FROM architecture WHERE id IN (\(placeholders))
             """,
             bind: bindIDs,
@@ -252,13 +252,12 @@ public final class PfamStore: @unchecked Sendable {
                 let id = Int(sqlite3_column_int(s, 0))
                 return Architecture(
                     id: id,
-                    signature: Self.text(s, 1) ?? "",
                     members: (membersByArchitecture[id] ?? [])
                         .sorted { $0.0 < $1.0 }.map(\.1),
-                    proteinCount: Int(sqlite3_column_int(s, 2)),
-                    representativeUniProt: Self.text(s, 3),
-                    representativeLength: sqlite3_column_type(s, 4) == SQLITE_NULL
-                        ? nil : Int(sqlite3_column_int(s, 4))
+                    proteinCount: Int(sqlite3_column_int(s, 1)),
+                    representativeUniProt: Self.text(s, 2),
+                    representativeLength: sqlite3_column_type(s, 3) == SQLITE_NULL
+                        ? nil : Int(sqlite3_column_int(s, 3))
                 )
             })
 

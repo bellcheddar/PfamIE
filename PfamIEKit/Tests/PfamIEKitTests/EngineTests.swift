@@ -307,6 +307,53 @@ struct EndToEndTests {
         #expect(literal.first?.family.accession.rawValue == "PF00069")
     }
 
+    @Test("Domain architectures round-trip, N to C")
+    func architectures() async throws {
+        let engine = try await engine()
+        let sh2 = try #require(try await engine.store.family(accession: PfamID("PF00017")))
+        let architectures = try await engine.store.architectures(forFamilyRow: sh2.row)
+        #expect(!architectures.isEmpty)
+
+        for architecture in architectures {
+            // Members must be ordered and complete: the signature is derived
+            // from them now rather than stored, so an empty or shuffled member
+            // list would silently produce a wrong architecture string.
+            #expect(!architecture.members.isEmpty)
+            #expect(architecture.members.count == architecture.signature
+                .split(separator: "-").count)
+            #expect(architecture.proteinCount > 0)
+        }
+
+        // SRC's architecture is SH3, SH2, then the tyrosine kinase domain, and
+        // it is common enough that it must be in SH2's top few.
+        let src = architectures.first {
+            $0.signature == "PF00018-PF00017-PF07714"
+        }
+        #expect(src != nil, "signatures were \(architectures.map(\.signature))")
+
+        // Ordered so the commonest context comes first.
+        let counts = architectures.map(\.proteinCount)
+        #expect(counts == counts.sorted(by: >))
+    }
+
+    @Test("Co-occurrence carries a direction where it has one")
+    func cooccurrence() async throws {
+        let engine = try await engine()
+        let sh2 = try #require(try await engine.store.family(accession: PfamID("PF00017")))
+        let edges = try await engine.store.cooccurrence(forFamilyRow: sh2.row)
+        #expect(!edges.isEmpty)
+        #expect(edges.allSatisfy { $0.familyRow == sh2.row })
+        #expect(edges.allSatisfy { $0.countBefore + $0.countAfter <= $0.proteinCount })
+
+        // SH3 sits N-terminal to SH2 in the Src-family kinases, and that has to
+        // survive into the ordering claim the Grammarian makes out loud.
+        let sh3 = try #require(try await engine.store.family(accession: PfamID("PF00018")))
+        if let edge = edges.first(where: { $0.partnerRow == sh3.row }),
+           let before = edge.fractionBefore {
+            #expect(before > 0.5, "SH3 should usually precede SH2, got \(before)")
+        }
+    }
+
     @Test("Prospector never proposes another unknown family as a hypothesis")
     func hypothesesAreAnnotated() async throws {
         let engine = try await engine()

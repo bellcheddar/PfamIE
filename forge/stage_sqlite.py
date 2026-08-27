@@ -54,9 +54,13 @@ CREATE TABLE clan (
     n_families  INTEGER
 );
 
+-- No `signature` column. It was 'PF00018-PF00017-PF07714' repeated for every
+-- architecture, plus a UNIQUE index over it, and cost 16 MB of an 83 MB file
+-- to store something architecture_member already holds in full. It is derived
+-- from the members in Swift, and deduplication happens in the forge where the
+-- accessions are in hand anyway.
 CREATE TABLE architecture (
     id          INTEGER PRIMARY KEY,
-    signature   TEXT NOT NULL UNIQUE,   -- 'PF00018-PF00017-PF07714', N to C
     n_domains   INTEGER NOT NULL,
     n_proteins  INTEGER NOT NULL,
     rep_uniprot TEXT,
@@ -112,6 +116,12 @@ INSERT INTO family_fts(family_fts) VALUES('optimize');
 """
 
 MAX_COOCCURRENCE_PARTNERS = 24     # per family, the strongest edges only
+
+# Architectures kept per family, commonest first. The fetch stores 15; the
+# Grammarian never draws more than about ten, and the tail is long: dropping
+# from 15 to 10 removes roughly a third of the architecture rows and the
+# indexes over them. What is dropped is logged rather than left implicit.
+MAX_ARCHITECTURES_PER_FAMILY = 10
 
 
 def _load_counters(build_dir: Path) -> dict[str, dict]:
@@ -193,6 +203,7 @@ def run(build_dir: Path, out_path: Path) -> dict:
 
     # ---- architectures --------------------------------------------------
     # One row per distinct N-to-C signature, shared by every family in it.
+    dropped_architectures = [0]
     arch_id: dict[str, int] = {}
     arch_rows: list[tuple] = []
     member_rows: list[tuple] = []
@@ -203,7 +214,11 @@ def run(build_dir: Path, out_path: Path) -> dict:
         home = row_of.get(acc)
         if home is None:
             continue
-        for rank, a in enumerate(rec.get("architectures", [])):
+        kept = rec.get("architectures", [])[:MAX_ARCHITECTURES_PER_FAMILY]
+        dropped_architectures[0] += max(
+            0, len(rec.get("architectures", [])) - len(kept)
+        )
+        for rank, a in enumerate(kept):
             members = [m for m in a["members"] if m in row_of]
             if not members:
                 continue
@@ -212,7 +227,7 @@ def run(build_dir: Path, out_path: Path) -> dict:
             if aid is None:
                 aid = len(arch_rows)
                 arch_id[signature] = aid
-                arch_rows.append((aid, signature, len(members), a["n"],
+                arch_rows.append((aid, len(members), a["n"],
                                   a.get("rep"), a.get("rep_length")))
                 member_rows.extend(
                     (aid, pos, row_of[m]) for pos, m in enumerate(members)
@@ -238,7 +253,7 @@ def run(build_dir: Path, out_path: Path) -> dict:
                 else:
                     slot[2] += a["n"]
 
-    db.executemany("INSERT INTO architecture VALUES (?,?,?,?,?,?)", arch_rows)
+    db.executemany("INSERT INTO architecture VALUES (?,?,?,?,?)", arch_rows)
     db.executemany("INSERT INTO architecture_member VALUES (?,?,?)", member_rows)
     db.executemany("INSERT INTO family_architecture VALUES (?,?,?,?)", fam_arch_rows)
 
@@ -296,6 +311,7 @@ def run(build_dir: Path, out_path: Path) -> dict:
         "architecture_members": len(member_rows),
         "family_architecture_links": len(fam_arch_rows),
         "cooccurrence_edges": len(cooc_rows),
+        "architectures_dropped_beyond_cap": dropped_architectures[0],
         "families_with_ida": len(ida),
         "families_with_counters": len(counters),
     }

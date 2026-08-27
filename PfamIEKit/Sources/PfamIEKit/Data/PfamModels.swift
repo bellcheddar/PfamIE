@@ -88,12 +88,18 @@ public struct Clan: Sendable, Hashable, Identifiable, Codable {
 /// One distinct N-to-C domain architecture, shared by every family in it.
 public struct Architecture: Sendable, Hashable, Identifiable, Codable {
     public let id: Int
-    /// "PF00018-PF00017-PF07714", N-terminal first.
-    public let signature: String
     public let members: [PfamID]
     public let proteinCount: Int
     public let representativeUniProt: String?
     public let representativeLength: Int?
+
+    /// "PF00018-PF00017-PF07714", N-terminal first.
+    ///
+    /// Derived rather than stored: as a column it cost 16 MB of the shipped
+    /// database to repeat what `members` already says.
+    public var signature: String {
+        members.map(\.rawValue).joined(separator: "-")
+    }
 }
 
 /// How often two families travel together, and in which order.

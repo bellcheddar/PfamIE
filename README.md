@@ -2,7 +2,7 @@
 
 > **The entire Pfam universe as an on-device inference engine: paste a sequence, get a family, offline.**
 
-![swift](https://img.shields.io/badge/swift-6.3-F05138?logo=swift&logoColor=white) ![platforms](https://img.shields.io/badge/platforms-iOS%20%C2%B7%20iPadOS%20%C2%B7%20macOS%20%C2%B7%20visionOS%20%C2%B7%20watchOS-000000?logo=apple&logoColor=white) ![xcode](https://img.shields.io/badge/xcode-26.6-1575F9?logo=xcode&logoColor=white) ![coreml](https://img.shields.io/badge/Core%20ML-Neural%20Engine-0A84FF?logo=apple&logoColor=white) ![esm2](https://img.shields.io/badge/ESM--2-t6%208M-5EEAD4) ![minilm](https://img.shields.io/badge/MiniLM-L6--v2-A78BFA) ![accelerate](https://img.shields.io/badge/Accelerate-vDSP%20%C2%B7%20BLAS-FB923C) ![molstar](https://img.shields.io/badge/Mol*-4.9.0-4C6EF5) ![sqlite](https://img.shields.io/badge/SQLite-FTS5-003B57?logo=sqlite&logoColor=white) ![python](https://img.shields.io/badge/python-3.12.13-3776AB?logo=python&logoColor=white) ![torch](https://img.shields.io/badge/pytorch-2.13.0-EE4C2C?logo=pytorch&logoColor=white) ![transformers](https://img.shields.io/badge/transformers-5.16.1-FFD21E?logo=huggingface&logoColor=black) ![coremltools](https://img.shields.io/badge/coremltools-9.0-555555) ![umap](https://img.shields.io/badge/umap--learn-0.5.12-9b51e0) ![tests](https://img.shields.io/badge/tests-17%20passing-00897B) ![data](https://img.shields.io/badge/data-Pfam%2038.2%20%C2%B7%20InterPro%20%C2%B7%20UniProt%20%C2%B7%20AlphaFold-467FF7) ![offline](https://img.shields.io/badge/classification-100%25%20offline-00d084) ![phase](https://img.shields.io/badge/phase-1.0%20build%20complete-fcb900) ![licence](https://img.shields.io/badge/licence-see%20below-lightgrey) ![author](https://img.shields.io/badge/author-Marc%20C.%20Deller%2C%20D.Phil.-1C244B)
+![swift](https://img.shields.io/badge/swift-6.3-F05138?logo=swift&logoColor=white) ![platforms](https://img.shields.io/badge/platforms-iOS%20%C2%B7%20iPadOS%20%C2%B7%20macOS%20%C2%B7%20visionOS%20%C2%B7%20watchOS-000000?logo=apple&logoColor=white) ![xcode](https://img.shields.io/badge/xcode-26.6-1575F9?logo=xcode&logoColor=white) ![coreml](https://img.shields.io/badge/Core%20ML-Neural%20Engine-0A84FF?logo=apple&logoColor=white) ![esm2](https://img.shields.io/badge/ESM--2-t6%208M-5EEAD4) ![minilm](https://img.shields.io/badge/MiniLM-L6--v2-A78BFA) ![accelerate](https://img.shields.io/badge/Accelerate-vDSP%20%C2%B7%20BLAS-FB923C) ![molstar](https://img.shields.io/badge/Mol*-4.9.0-4C6EF5) ![sqlite](https://img.shields.io/badge/SQLite-FTS5-003B57?logo=sqlite&logoColor=white) ![python](https://img.shields.io/badge/python-3.12.13-3776AB?logo=python&logoColor=white) ![torch](https://img.shields.io/badge/pytorch-2.13.0-EE4C2C?logo=pytorch&logoColor=white) ![transformers](https://img.shields.io/badge/transformers-5.16.1-FFD21E?logo=huggingface&logoColor=black) ![coremltools](https://img.shields.io/badge/coremltools-9.0-555555) ![umap](https://img.shields.io/badge/umap--learn-0.5.12-9b51e0) ![tests](https://img.shields.io/badge/tests-21%20passing-00897B) ![data](https://img.shields.io/badge/data-Pfam%2038.2%20%C2%B7%20InterPro%20%C2%B7%20UniProt%20%C2%B7%20AlphaFold-467FF7) ![offline](https://img.shields.io/badge/classification-100%25%20offline-00d084) ![phase](https://img.shields.io/badge/phase-1.0%20build%20complete-fcb900) ![licence](https://img.shields.io/badge/licence-see%20below-lightgrey) ![author](https://img.shields.io/badge/author-Marc%20C.%20Deller%2C%20D.Phil.-1C244B)
 
 <table>
 <tr>
@@ -41,7 +41,7 @@ PfamIE turns all 30,031 Pfam families into an inference engine that fits in your
 |---|---|
 | **Galaxy** | All 30,031 families as a 3D point cloud, clans as coloured regions, the dark proteome drawn dim. Tap a star, open its card, or watch your last query drop in as an amber comet. |
 | **Oracle** | Paste a sequence or open a FASTA. Multi-scale window scanning returns the family, the clan, the N-to-C domain architecture, and a confidence that has been calibrated against real proteins. |
-| **Grammarian** | Which domains travel with which, in what order, and how often: co-occurrence graphs over 199,143 real architectures, and "what else is built like mine?" |
+| **Grammarian** | Which domains travel with which, in what order, and how often: co-occurrence graphs over 151,818 real architectures, and "what else is built like mine?" |
 | **Prospector** | The 7,874 families with no known function, each with its nearest annotated neighbours as an explicitly hypothesis-flavoured lead. |
 | **Field Guide** | The offline Pfam atlas. "breaks down plastic" and "haem-binding families that dimerise" both work, with no network, through a bundled MiniLM. |
 
@@ -136,7 +136,7 @@ cd ../..
 | Stage | Produces |
 |---|---|
 | `stage_metadata` | 30,031 families, 891 clans, 7,874 DUFs, a UniProt structural representative for every family |
-| `stage_interpro` | 199,143 distinct N-to-C architectures and 208,401 co-occurrence edges |
+| `stage_interpro` | 151,818 distinct N-to-C architectures and 151,719 co-occurrence edges |
 | `stage_embed` | 368,451 ESM-2 embeddings, 16 stratified seed sequences per family centroid |
 | `stage_transform` | The 320 × 320 whitening transform, and the seed-based reference calibration |
 | `stage_coreml` | Two `.mlpackage` models, with parity asserted on the Neural Engine and end to end against the index |
@@ -177,7 +177,7 @@ The script is negative-tested: strip a model from a copy of the bundle and it mu
 | Xcode | 26.6 or later |
 | Deployment | iOS 18, macOS 15, visionOS 2, watchOS 11 |
 | Forge | Python 3.12 (numba and coremltools are not yet reliable on 3.14) |
-| Bundle | About 170 MB: 83 MB database, 40 MB matrices, 39 MB models, 5 MB Mol\* |
+| Bundle | About 146 MB: 58 MB database, 40 MB matrices, 39 MB models, 5 MB Mol\* |
 | Network | Only for AlphaFold structures. Classification, architecture and search are entirely offline. |
 
 ## ✅ To Do
@@ -196,7 +196,8 @@ Roadmap for PfamIE, in dependency order. Suggestions welcome.
 - [x] **Bundle verification, negative-tested.** `Tools/verify-bundle.sh` checks every model, matrix and database, and is proven to fail when one is removed.
 - [ ] **visionOS and watchOS build verification.** Both targets are written and the SDKs are present, but the platform components are still downloading, so neither has been compiled yet. Nothing else is blocking them.
 - [ ] **App icon.** Placeholder only. Note that the App Store rejects an icon with an alpha channel, and PIL hands you RGBA by default.
-- [ ] **Trim the bundle.** 170 MB against a 60 MB target. int8 per-row quantisation of the centroids is free (top-1 0.7150 against 0.7149 at float16) and halves them to 9.6 MB; the same for the description embeddings saves 11.5 MB. The 83 MB database is the real target: capping architectures per family is the lever.
+- [x] **Trim the database.** 83 MB to 58 MB, taking the bundle from 170 MB to 146 MB. The `signature` column and its unique index cost 16 MB to repeat what `architecture_member` already held, so it is derived in Swift now; capping architectures at 10 per family dropped a further 70,751 rows from a long tail the Grammarian never draws. The count dropped is logged rather than left implicit.
+- [ ] **Trim the matrices.** int8 per-row quantisation of the centroids is free (top-1 0.7150 against 0.7149 at float16) and halves them from 18 MB to 9.6 MB; the same for the description embeddings saves 11.5 MB. That would put the bundle near 125 MB, comfortably inside the cellular download limit.
 - [ ] **A larger protein model.** ESM-2 t6-8M is 8 million parameters, and 0.43 top-1 on real proteins is its honest ceiling. t12-35M is the obvious next step, at roughly +35 MB palettised, and should be measured on the same real-protein benchmark rather than on held-out seeds.
 - [ ] **Boundary refinement.** Domain calls are resolved to about a third of a window width. A second pass at finer stride around each accepted boundary would sharpen the architecture track.
 - [ ] **VisionKit sequence scanning.** Read a printed sequence with the camera. First on the cut list and duly cut.
