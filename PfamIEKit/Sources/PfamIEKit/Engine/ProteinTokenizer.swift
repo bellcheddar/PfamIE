@@ -24,6 +24,19 @@ public struct ProteinTokenizer: Sendable {
     /// The longest residue run that fits alongside the <cls> and <eos> tokens.
     public static let maxResidues = contextLength - 2
 
+    /// The twenty standard residues plus the ambiguity codes ESM-2 knows, as
+    /// scalars, for callers that need to test a character without tokenising.
+    public static let residueScalars: Set<Unicode.Scalar> = {
+        var set = Set<Unicode.Scalar>()
+        for token in vocabulary where token.count == 1 {
+            if let scalar = token.unicodeScalars.first,
+               scalar.value >= 65, scalar.value <= 90 {
+                set.insert(scalar)
+            }
+        }
+        return set
+    }()
+
     private static let idForResidue: [UInt8: Int32] = {
         var table: [UInt8: Int32] = [:]
         for (index, token) in vocabulary.enumerated() where token.count == 1 {

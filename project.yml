@@ -126,16 +126,38 @@ targets:
       - Apps/watchOS
     dependencies:
       - package: PfamIEKit
+      - target: PfamIE-watchOS-Complication
+        embed: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.mdeller.pfamie.watchkitapp
         PRODUCT_NAME: PfamIE
         INFOPLIST_FILE: Apps/watchOS/Info.plist
+        CODE_SIGN_ENTITLEMENTS: Apps/watchOS/PfamIE.entitlements
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         WATCHOS_DEPLOYMENT_TARGET: "11.0"
       configs:
         Release:
           PROVISIONING_PROFILE_SPECIFIER: PfamIE watchOS App Store
+
+  # The complication is a WidgetKit extension embedded in the watch app. It
+  # shares an App Group with it so it can read the last synced result.
+  PfamIE-watchOS-Complication:
+    type: app-extension
+    platform: watchOS
+    sources:
+      - Apps/watchOS-Complication
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.mdeller.pfamie.watchkitapp.complication
+        PRODUCT_NAME: PfamIEComplication
+        INFOPLIST_FILE: Apps/watchOS-Complication/Info.plist
+        CODE_SIGN_ENTITLEMENTS: Apps/watchOS-Complication/PfamIE.entitlements
+        WATCHOS_DEPLOYMENT_TARGET: "11.0"
+        SKIP_INSTALL: YES
+      configs:
+        Release:
+          PROVISIONING_PROFILE_SPECIFIER: PfamIE watchOS Complication App Store
 
 schemes:
   PfamIE:

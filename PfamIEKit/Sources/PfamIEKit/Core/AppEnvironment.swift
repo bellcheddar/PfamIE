@@ -36,12 +36,26 @@ public final class AppEnvironment {
     }
 
     private static let appearanceKey = "appearance"
+    private static let emailKey = "verificationEmail"
+
+    /// The user's own email, required by EMBL-EBI for job submission.
+    ///
+    /// Theirs, not the author's: it is their sequence and their job, and this
+    /// app does not put anyone else's address on a third-party service.
+    public var verificationEmail: String {
+        didSet { UserDefaults.standard.set(verificationEmail, forKey: Self.emailKey) }
+    }
+
+    public var canVerifyOnline: Bool {
+        verificationEmail.contains("@") && verificationEmail.contains(".")
+    }
 
     public init() {
         // Dark is the default, not "follow the system". The Galaxy is a
         // starfield: on a white ground the point cloud's additive glow reads
         // as a white blob, and the whole instrument metaphor goes with it.
         // Light mode is fully supported and one tap away in Settings.
+        self.verificationEmail = UserDefaults.standard.string(forKey: Self.emailKey) ?? ""
         let stored = UserDefaults.standard.string(forKey: Self.appearanceKey)
         self.appearance = AppearanceChoice(rawValue: stored ?? "") ?? .dark
     }

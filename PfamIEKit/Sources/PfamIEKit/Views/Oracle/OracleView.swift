@@ -19,6 +19,14 @@ public struct OracleView: View {
     @State private var result: PfamIEEngine.Classification?
     @State private var failure: String?
     @State private var showingImporter = false
+    @State private var showingScanner = false
+    @State private var scanned = ""
+    @State private var verifying = false
+    @State private var verifyStatus = ""
+    @State private var verification: [InterProScanClient.Match]?
+    @State private var verifyError: String?
+    @State private var confirmingVerify = false
+    @State private var verifyTask: Task<Void, Never>?
     @FocusState private var inputFocused: Bool
 
     public init() {}
@@ -42,6 +50,9 @@ public struct OracleView: View {
         // Vision Pro has no haptics, and the modifier is visionOS 26 only.
         #if !os(visionOS)
         .sensoryFeedback(.success, trigger: result?.residueCount)
+        #endif
+        #if canImport(VisionKit) && os(iOS)
+        .sheet(isPresented: $showingScanner) { scannerSheet }
         #endif
         .fileImporter(
             isPresented: $showingImporter,
@@ -131,6 +142,16 @@ public struct OracleView: View {
 
                 Button("Open file", systemImage: "doc") { showingImporter = true }
                     .buttonStyle(.bordered)
+
+                #if canImport(VisionKit) && os(iOS)
+                if SequenceScannerView.isAvailable {
+                    Button("Scan", systemImage: "camera.viewfinder") {
+                        scanned = ""
+                        showingScanner = true
+                    }
+                    .buttonStyle(.bordered)
+                }
+                #endif
 
                 if !input.isEmpty {
                     Button("Clear", systemImage: "xmark") {
@@ -252,6 +273,11 @@ public struct OracleView: View {
                 }
             }
 
+            verificationSection(result)
+
+            Group {
+            }
+
             sectionHeading("Nearest families", detail: nil)
             VStack(spacing: 0) {
                 ForEach(result.hits) { hit in
@@ -262,6 +288,122 @@ public struct OracleView: View {
             .background(theme.bgRaised, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .strokeBorder(theme.hairline))
+        }
+    }
+
+    /// The one network path in the app, and it says so before using it.
+    @ViewBuilder
+    private func verificationSection(_ result: PfamIEEngine.Classification) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            sectionHeading("Check against InterProScan", detail: nil)
+
+            if let matches = verification {
+                if matches.isEmpty {
+                    Text("InterProScan found no Pfam match in this sequence.")
+                        .font(.footnote).foregroundStyle(theme.inkSecondary)
+                } else {
+                    ForEach(matches) { match in
+                        HStack(spacing: 10) {
+                            Image(systemName: agreementSymbol(match, result))
+                                .foregroundStyle(agreementColour(match, result))
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text("\(match.name) \(match.accession)")
+                                    .font(.system(.subheadline, design: .rounded))
+                                Text("residues \(match.start) to \(match.end)")
+                                    .font(.caption).foregroundStyle(theme.inkSecondary)
+                            }
+                            Spacer()
+                        }
+                        .padding(.horizontal, 12).padding(.vertical, 8)
+                        .background(theme.bgRaised,
+                                    in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    }
+                    Text("A tick means PfamIE called the same family. This is the "
+                         + "authoritative answer; PfamIE is an approximation of it.")
+                        .font(.caption).foregroundStyle(theme.inkSecondary)
+                }
+            } else if verifying {
+                HStack(spacing: 8) {
+                    ProgressView().controlSize(.small)
+                    Text(verifyStatus).font(.footnote).foregroundStyle(theme.inkSecondary)
+                    Spacer()
+                    Button("Cancel") { verifyTask?.cancel(); verifying = false }
+                        .font(.footnote)
+                }
+            } else if let verifyError {
+                Label(verifyError, systemImage: "exclamationmark.triangle")
+                    .font(.footnote).foregroundStyle(theme.accentFlare)
+                    .fixedSize(horizontal: false, vertical: true)
+            } else if app.canVerifyOnline {
+                Button("Verify online with InterProScan", systemImage: "network") {
+                    confirmingVerify = true
+                }
+                .buttonStyle(.bordered)
+                .font(.footnote)
+            } else {
+                Text("Add your email in Settings to check this call against "
+                     + "InterProScan at EMBL-EBI. Everything else works offline.")
+                    .font(.footnote).foregroundStyle(theme.inkSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .confirmationDialog(
+            "Send this sequence to EMBL-EBI?",
+            isPresented: $confirmingVerify,
+            titleVisibility: .visible
+        ) {
+            Button("Send \(result.residueCount) residues") { verifyOnline(result) }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This is the only part of PfamIE that leaves your device. Your "
+                 + "sequence and your email address go to InterProScan 5 at "
+                 + "EMBL-EBI, subject to their terms of use.")
+        }
+    }
+
+    private func agreementSymbol(
+        _ match: InterProScanClient.Match,
+        _ result: PfamIEEngine.Classification
+    ) -> String {
+        agrees(match, result) ? "checkmark.circle.fill" : "circle.dashed"
+    }
+
+    private func agreementColour(
+        _ match: InterProScanClient.Match,
+        _ result: PfamIEEngine.Classification
+    ) -> Color {
+        agrees(match, result) ? theme.confidenceHigh : theme.inkSecondary
+    }
+
+    private func agrees(
+        _ match: InterProScanClient.Match,
+        _ result: PfamIEEngine.Classification
+    ) -> Bool {
+        let called = Set(result.domains.map(\.family.accession.rawValue)
+                         + result.hits.prefix(1).map(\.family.accession.rawValue))
+        return called.contains(match.accession)
+    }
+
+    private func verifyOnline(_ result: PfamIEEngine.Classification) {
+        verifyError = nil
+        verification = nil
+        verifying = true
+        verifyStatus = "Submitting"
+
+        verifyTask = Task {
+            do {
+                let outcome = try await InterProScanClient().verify(
+                    sequence: result.sequence,
+                    email: app.verificationEmail,
+                    onStatus: { status in Task { @MainActor in verifyStatus = status } }
+                )
+                verification = outcome.matches
+            } catch is CancellationError {
+                verifyError = nil
+            } catch {
+                verifyError = String(describing: error)
+            }
+            verifying = false
         }
     }
 
@@ -310,6 +452,48 @@ public struct OracleView: View {
         .buttonStyle(.plain)
         .contextMenu { FamilyActions(family: hit.family) }
     }
+
+    #if canImport(VisionKit) && os(iOS)
+    private var scannerSheet: some View {
+        NavigationStack {
+            ZStack(alignment: .bottom) {
+                SequenceScannerView(harvested: $scanned) { _ in }
+                    .ignoresSafeArea()
+
+                VStack(spacing: 8) {
+                    Text(scanned.isEmpty
+                         ? "Point the camera at a printed sequence"
+                         : "\(scanned.count) residues read")
+                        .font(.footnote.weight(.medium))
+                    if !scanned.isEmpty {
+                        Text(scanned.prefix(60) + (scanned.count > 60 ? "..." : ""))
+                            .font(.system(.caption2, design: .monospaced))
+                            .lineLimit(1)
+                            .foregroundStyle(theme.inkSecondary)
+                    }
+                    Button("Use this sequence") {
+                        input = scanned
+                        showingScanner = false
+                        Task { await classify() }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(theme.accentNova)
+                    .disabled(scanned.count < 12)
+                }
+                .padding(16)
+                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
+                .padding()
+            }
+            .navigationTitle("Scan a sequence")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { showingScanner = false }
+                }
+            }
+        }
+    }
+    #endif
 
     // MARK: - Actions
 

@@ -74,6 +74,27 @@ public struct SettingsSheet: View {
                         .font(.caption)
                 }
 
+                Section {
+                    TextField("you@example.com", text: $app.verificationEmail)
+                        #if !os(macOS)
+                        .textInputAutocapitalization(.never)
+                        .keyboardType(.emailAddress)
+                        #endif
+                        .autocorrectionDisabled()
+                        .font(.system(.footnote, design: .monospaced))
+                } header: {
+                    Text("Online verification")
+                } footer: {
+                    Text("Optional. The Oracle can check a call against "
+                         + "InterProScan 5 at EMBL-EBI, which is the authoritative "
+                         + "answer PfamIE approximates. EBI requires an email address "
+                         + "for job submission, and it must be yours. This is the only "
+                         + "feature that sends anything off the device, it always asks "
+                         + "first, and nothing else in the app uses the network except "
+                         + "downloading AlphaFold structures.")
+                        .font(.caption)
+                }
+
                 Section("About") {
                     LabeledContent("PfamIE", value: "1.0")
                     Link("marcdeller.com", destination: URL(string: "https://marcdeller.com")!)

@@ -63,6 +63,131 @@ struct ProteinTokenizerTests {
     }
 }
 
+@Suite("Camera sequence harvesting")
+struct SequenceHarvesterTests {
+
+    @Test("Prose is not a sequence, even written in residue letters")
+    func rejectsProse() {
+        // Every one of these is a valid residue string. That is the whole
+        // problem with reading sequences off a page.
+        for prose in ["MASSIVE", "CANDIDATE", "SEQUENCE", "A MAN", "PROTEIN FAMILY",
+                      "THE ENTIRE PROTEIN FAMILY DATABASE",
+                      "DOMAIN ARCHITECTURE AND FAMILY ASSIGNMENT"] {
+            #expect(SequenceHarvester.sequenceLike(in: prose).isEmpty,
+                    "\(prose) was taken for a sequence")
+        }
+    }
+
+    @Test("Real sequences sit well below the English bigram threshold")
+    func bigramSeparation() {
+        // The measured maximum over 300 Pfam seed sequences is 0.148 and the
+        // threshold is 0.17, so a real sequence must never come close.
+        for sequence in [Probes.lysozyme, Probes.src] {
+            let density = SequenceHarvester.englishBigramDensity(of: sequence)
+            #expect(density < SequenceHarvester.maximumEnglishBigramDensity,
+                    "a real sequence scored \(density) as English")
+        }
+        // And a sentence must be well above it.
+        #expect(SequenceHarvester.englishBigramDensity(of: "THISISTHEMATERIALSANDMETH")
+                > SequenceHarvester.maximumEnglishBigramDensity)
+    }
+
+    @Test("Low-complexity runs from figure furniture are rejected")
+    func rejectsLowComplexity() {
+        #expect(SequenceHarvester.sequenceLike(in: String(repeating: "A", count: 40)).isEmpty)
+        #expect(SequenceHarvester.sequenceLike(in: String(repeating: "AG", count: 20)).isEmpty)
+    }
+
+    @Test("Lower-case prose is rejected, upper-case residues are kept")
+    func caseMatters() {
+        #expect(SequenceHarvester.sequenceLike(in: "kvfgrcelaaamkrhgldnyrgy").isEmpty)
+        #expect(SequenceHarvester.sequenceLike(in: "KVFGRCELAAAMKRHGLDNYRGY").count == 1)
+    }
+
+    @Test("A sequence is pulled out of a line of caption text")
+    func extractsFromCaption() {
+        let line = "Figure 2. The mature chain KVFGRCELAAAMKRHGLDNYRGYSLGNWVCAAKFE is shown."
+        let found = SequenceHarvester.sequenceLike(in: line)
+        #expect(found == ["KVFGRCELAAAMKRHGLDNYRGYSLGNWVCAAKFE"])
+
+        // Printed in blocks of ten, which is the usual convention and the
+        // reason whitespace cannot simply be a separator.
+        let blocks = "KVFGRCELAA AMKRHGLDNY RGYSLGNWVC AAKFESNFNT"
+        #expect(SequenceHarvester.sequenceLike(in: blocks)
+                == ["KVFGRCELAAAMKRHGLDNYRGYSLGNWVCAAKFESNFNT"])
+    }
+
+    @Test("Fragments accumulate in order and re-reads do not duplicate")
+    func accumulates() {
+        var harvester = SequenceHarvester()
+        harvester.absorb(["KVFGRCELAAAMKRHGLDNYRGY", "SLGNWVCAAKFESNFNTQATNRN"])
+        let afterTwo = harvester.sequence
+        #expect(afterTwo == "KVFGRCELAAAMKRHGLDNYRGYSLGNWVCAAKFESNFNTQATNRN")
+
+        // The camera re-reads the same text constantly as it moves; a second
+        // sighting must not append the fragment twice.
+        harvester.absorb(["KVFGRCELAAAMKRHGLDNYRGY"])
+        #expect(harvester.sequence == afterTwo)
+
+        harvester.reset()
+        #expect(harvester.sequence.isEmpty)
+    }
+}
+
+@Suite("InterProScan result parsing")
+struct InterProScanParsingTests {
+
+    /// A trimmed InterProScan 5 response, shaped exactly as EBI returns it.
+    /// Parsing is tested against this rather than by contacting EBI: their
+    /// service is shared, jobs take minutes, and a unit test has no business
+    /// queueing on public infrastructure.
+    private static let response = Data("""
+    {"results":[{"sequence":"MGSNK","matches":[
+      {"signature":{"accession":"PF00018","name":"SH3_1",
+        "signatureLibraryRelease":{"library":"PFAM"}},
+       "evalue":1.2e-12,
+       "locations":[{"start":90,"end":137}]},
+      {"signature":{"accession":"PF07714","name":"PK_Tyr_Ser-Thr",
+        "signatureLibraryRelease":{"library":"PFAM"}},
+       "evalue":3.4e-60,
+       "locations":[{"start":271,"end":518}]},
+      {"signature":{"accession":"PF00017","name":"SH2",
+        "signatureLibraryRelease":{"library":"PFAM"}},
+       "evalue":5.0e-20,
+       "locations":[{"start":151,"end":233}]},
+      {"signature":{"accession":"G3DSA:3.30.200.20","name":"not-pfam",
+        "signatureLibraryRelease":{"library":"GENE3D"}},
+       "locations":[{"start":1,"end":50}]}
+    ]}]}
+    """.utf8)
+
+    @Test("Pfam matches are extracted, ordered, and non-Pfam signatures dropped")
+    func parsesMatches() {
+        let matches = InterProScanClient.parse(json: Self.response)
+
+        // Gene3D and every other member database must be filtered out: this
+        // app compares against Pfam, and a CATH superfamily in the list would
+        // read as a disagreement that is not one.
+        #expect(matches.count == 3)
+        #expect(matches.allSatisfy { $0.accession.hasPrefix("PF") })
+
+        // Ordered N to C, which is how the result is displayed.
+        #expect(matches.map(\.accession) == ["PF00018", "PF00017", "PF07714"])
+        #expect(matches[0].start == 90 && matches[0].end == 137)
+        #expect(matches[2].evalue == 3.4e-60)
+    }
+
+    @Test("Malformed or empty responses yield nothing rather than crashing")
+    func toleratesRubbish() {
+        #expect(InterProScanClient.parse(json: Data("not json".utf8)).isEmpty)
+        #expect(InterProScanClient.parse(json: Data("{}".utf8)).isEmpty)
+        #expect(InterProScanClient.parse(json: Data(#"{"results":[]}"#.utf8)).isEmpty)
+        // A match with no locations must not produce a zero-length domain.
+        let noLocations = Data(#"{"results":[{"matches":[{"signature":{"accession":"PF00069"}}]}]}"#.utf8)
+        #expect(InterProScanClient.parse(json: noLocations).isEmpty)
+    }
+}
+
 @Suite("Calibration")
 struct CalibrationTests {
 

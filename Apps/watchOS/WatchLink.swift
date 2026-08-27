@@ -1,6 +1,7 @@
 import Foundation
 import Observation
 import WatchConnectivity
+import WidgetKit
 
 /// The last Oracle result, as sent from the phone.
 struct WatchResult: Codable, Sendable, Equatable {
@@ -26,9 +27,18 @@ final class WatchLink: NSObject {
 
     private static let storageKey = "lastResult"
 
+    /// Shared with the complication extension. `UserDefaults.standard` would
+    /// be a different container in the widget, so the complication would show
+    /// a placeholder forever.
+    private static let suite = "group.com.mdeller.pfamie"
+
+    private var store: UserDefaults {
+        UserDefaults(suiteName: Self.suite) ?? .standard
+    }
+
     override init() {
         super.init()
-        if let data = UserDefaults.standard.data(forKey: Self.storageKey),
+        if let data = UserDefaults(suiteName: Self.suite)?.data(forKey: Self.storageKey),
            let stored = try? JSONDecoder().decode(WatchResult.self, from: data) {
             latest = stored
         }
@@ -40,8 +50,11 @@ final class WatchLink: NSObject {
     fileprivate func store(_ result: WatchResult) {
         latest = result
         if let data = try? JSONEncoder().encode(result) {
-            UserDefaults.standard.set(data, forKey: Self.storageKey)
+            store.set(data, forKey: Self.storageKey)
         }
+        // Push the face rather than waiting for the system to ask: a result
+        // arriving from the phone is exactly when the complication is stale.
+        WidgetCenter.shared.reloadTimelines(ofKind: "PfamIELastClassification")
     }
 }
 
